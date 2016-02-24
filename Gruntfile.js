@@ -60,7 +60,8 @@ module.exports = function(grunt) {
   });
 
   require('load-grunt-tasks')(grunt);
-  grunt.registerTask('default', ['webpack', 'jshint', 'karma']);
-  grunt.registerTask('dev', ['default', 'watch']);
+  grunt.registerTask('test', ['webpack', 'jshint', 'karma']);
+  grunt.registerTask('dev', ['test', 'watch']);
+  grunt.registerTask('default', ['test']);
 
 }
