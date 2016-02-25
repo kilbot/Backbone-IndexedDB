@@ -1,219 +1,236 @@
 describe('Backbone IndexedDB', function () {
 
-  before(function () {
-    this.collection = new Backbone.IDBCollection();
+  var dbNameArray = [];
+  var Collection;
+
+  beforeEach(function(){
+    var storePrefix = 'Test-';
+    var name = Date.now();
+    Collection = Backbone.IDBCollection.extend({
+      storePrefix: storePrefix,
+      name: name
+    });
+    dbNameArray.push( storePrefix + name );
   });
 
   it('should be in a valid state', function () {
-    expect( this.collection ).to.be.ok;
-    expect( this.collection.db.store).to.be.instanceOf( IDBStore );
+    var collection = new Collection();
+    expect( collection ).to.be.ok;
+    expect( collection.db.store ).to.be.instanceOf( IDBStore );
   });
 
+  it('should create new models', function (done) {
+    var collection = new Collection();
+    var model = collection.create({
+      firstname: 'Jane',
+      lastname: 'Smith',
+      age: 35,
+      email: 'janesmith@example.com'
+    }, {
+      wait: true,
+      special: true,
+      error: done,
+      success: function(m, resp, opts){
+        expect( collection ).to.have.length(1);
+        expect( m ).eqls( model );
+        expect( opts.special ).to.be.true;
+        done();
+      }
+    });
+  });
 
-  describe('Working with a IDBCollection', function () {
+  it('should save a model', function (done) {
+    var collection = new Collection();
+    var model = collection.add({
+      firstname: 'John',
+      lastname: 'Doe',
+      age: 52,
+      email: 'johndoe@example.com'
+    });
 
-    it('should create a new Backbone Models', function (done) {
-      var collection = this.collection;
-      var model = collection.create({
+    model.save({}, {
+      special: true,
+      error: done,
+      success: function(m, resp, opts) {
+        expect(m).to.eql(model);
+        expect(m.isNew()).to.be.false;
+        expect(resp.age).to.eql(52);
+        expect(opts.special).to.be.true;
+        done();
+      }
+    });
+  });
+
+  it('should update an existing model', function (done) {
+    var collection = new Collection();
+    var model = collection.create({
+      firstname: 'John',
+      lastname: 'Doe',
+      age: 52,
+      email: 'johndoe@example.com'
+    });
+
+    model.save({ age: 54 }, {
+      special: true,
+      error: done,
+      success: function(m, resp, opts) {
+        expect(m).to.eql(model);
+        expect(m.get('age')).to.eql(54);
+        expect(resp.age).to.eql(54);
+        expect(opts.special).to.be.true;
+        done();
+      }
+    });
+  });
+
+  it('should fetch a Backbone Model', function (done) {
+    var collection = new Collection();
+    collection.create({
+      firstname: 'John',
+      lastname: 'Doe',
+      age: 52,
+      email: 'johndoe@example.com'
+    }, {
+      wait: true,
+      error: done,
+      success: function(model){
+        model.set({ age: 53 });
+        model.fetch({
+          special: true,
+          success: function(m, resp, opts) {
+            expect(m).to.eql(model);
+            expect(m.get('age')).to.eql(52);
+            expect(resp.age).to.eql(52);
+            expect(opts.special).to.be.true;
+            done();
+          }
+        });
+      }
+    });
+  });
+
+  it('should trigger fetch error arguments', function (done) {
+    var collection = new Collection();
+    var keyPath = collection.db.store.keyPath;
+    var model = {};
+    model[keyPath] = null;
+    model = collection.add(model);
+    model.fetch({
+      special: true,
+      success: done,
+      error: function(m, resp, opts){
+        expect(m).to.eql(model);
+        expect(opts.special).to.be.true;
+        done();
+      }
+    });
+  });
+
+  it('should destroy a model', function (done) {
+    var collection = new Collection();
+    collection.create({
+      firstname: 'John',
+      lastname: 'Doe',
+      age: 52,
+      email: 'johndoe@example.com'
+    }, {
+      wait: true,
+      error: done,
+      success: function(model){
+        model.destroy({
+          wait: true,
+          special: true,
+          error: done,
+          success: function(m, resp, opts) {
+            expect(m).to.eql(model);
+            expect(m.get('age')).to.eql(52);
+            expect(resp.age).to.eql(52);
+            expect(opts.special).to.be.true;
+            expect(collection).to.have.length(0);
+            collection.db.store.count( function(count){
+              expect( count ).equals(0);
+              done();
+            });
+          }
+        });
+      }
+    });
+  });
+
+  it('should destroy a new model', function (done) {
+    var collection = new Collection();
+    var model = collection.add({
+      firstname: 'John',
+      lastname: 'Doe',
+      age: 52,
+      email: 'johndoe@example.com'
+    });
+    expect( model.destroy() ).to.be.false;
+    expect( collection ).to.have.length(0);
+    done();
+  });
+
+  it('should batch save a collection of models', function (done) {
+    var collection = new Collection();
+    collection.saveBatch([
+      {
         firstname: 'Jane',
         lastname: 'Smith',
         age: 35,
         email: 'janesmith@example.com'
       }, {
-        wait: true,
-        special: true,
-        success: function(m, resp, opts){
-          expect( collection ).to.have.length(1);
-          expect( m ).eqls( model );
-          expect( opts.special ).to.be.true;
-          done();
-        }
-      });
-    });
-
-    it('should batch save the collection', function (done) {
-      var collection = this.collection;
-      this.collection.saveBatch([
-        {
-          firstname: 'Jane',
-          lastname: 'Smith',
-          age: 35,
-          email: 'janesmith@example.com'
-        }, {
-          firstname: 'John',
-          lastname: 'Doe',
-          age: 52,
-          email: 'johndoe@example.com'
-        }, {
-          firstname: 'Joe',
-          lastname: 'Bloggs',
-          age: 28,
-          email: 'joebloggs@example.com'
-        }
-      ], {
-        success: function(){
-          expect( collection ).to.have.length(3);
-          done();
-        }
-      });
-    });
-
-    afterEach(function(done) {
-      this.collection.clear()
-        .done(function(){
-          done();
-        });
-    });
-
-  });
-
-
-  describe('Working with a IDBModel', function () {
-
-    it('should save a Backbone Model', function (done) {
-      var model = this.collection.add(
-        {
-          firstname: 'John',
-          lastname: 'Doe',
-          age: 52,
-          email: 'johndoe@example.com'
-        }
-      );
-
-      model.save({},
-        {
-          special: true,
-          success: function(m, resp, opts) {
-            expect(m).to.eql(model);
-            expect(m.isNew()).to.be.false;
-            expect(resp.age).to.eql(52);
-            expect(opts.special).to.be.true;
-            done();
-          }
-        }
-      );
-    });
-
-    it('should update an existing Backbone Model', function (done) {
-      var model = this.collection.create(
-        {
-          firstname: 'John',
-          lastname: 'Doe',
-          age: 52,
-          email: 'johndoe@example.com'
-        }
-      );
-
-      model.save(
-        {
-          age: 54
-        },
-        {
-          special: true,
-          success: function(m, resp, opts) {
-            expect(m).to.eql(model);
-            expect(m.get('age')).to.eql(54);
-            expect(resp.age).to.eql(54);
-            expect(opts.special).to.be.true;
-            done();
-          }
-        }
-      );
-    });
-
-    it('should fetch a Backbone Model', function (done) {
-      this.collection.create({
-          firstname: 'John',
-          lastname: 'Doe',
-          age: 52,
-          email: 'johndoe@example.com'
-        }, {
-          wait: true,
-          success: function(model){
-            model.set({ age: 53 });
-            model.fetch(
-              {
-                special: true,
-                success: function(m, resp, opts) {
-                  expect(m).to.eql(model);
-                  expect(m.get('age')).to.eql(52);
-                  expect(resp.age).to.eql(52);
-                  expect(opts.special).to.be.true;
-                  done();
-                }
-              }
-            );
-          }
-      });
-    });
-
-    it('should destroy a model', function (done) {
-      var collection = this.collection;
-      collection.create({
         firstname: 'John',
         lastname: 'Doe',
         age: 52,
         email: 'johndoe@example.com'
       }, {
-        wait: true,
-        success: function(model){
-          model.destroy({
-            wait: true,
-            special: true,
-            success: function(m, resp, opts) {
-              expect(m).to.eql(model);
-              expect(m.get('age')).to.eql(52);
-              expect(resp.age).to.eql(52);
-              expect(opts.special).to.be.true;
-              expect(collection).to.have.length(0);
-              collection.db.store.count( function(count){
-                expect( count ).equals(0);
-                done();
-              });
-            }
-          });
-        }
+        firstname: 'Joe',
+        lastname: 'Bloggs',
+        age: 28,
+        email: 'joebloggs@example.com'
+      }
+    ])
+    .then( function( records ) {
+      expect( collection ).to.have.length( 0 );
+      expect( records ).to.have.length( 3 );
+      _.each( records, function( record ){
+        expect( record.id ).to.not.be.undefined;
+      });
+      collection.db.store.count( function(count){
+        expect( count ).equals( 3 );
+        done();
       });
     });
-
-    it('should destroy a new model', function (done) {
-      var model = this.collection.add({
-        firstname: 'John',
-        lastname: 'Doe',
-        age: 52,
-        email: 'johndoe@example.com'
-      });
-      expect( model.destroy() ).to.be.false;
-      expect( this.collection ).to.have.length(0);
-      done();
-    });
-
-    it('should trigger fetch error arguments', function (done) {
-      var keyPath = this.collection.db.store.keyPath;
-      var model = {};
-      model[keyPath] = null;
-      model = this.collection.add(model);
-      model.fetch({
-        special: true,
-        error: function(m, resp, opts){
-          expect(m).to.eql(model);
-          expect(opts.special).to.be.true;
-          done();
-        }
-      });
-    });
-
-    afterEach(function(done) {
-      this.collection.clear()
-        .done(function(){
-          done();
-        });
-    });
-
   });
 
-  after(function() {
-    window.indexedDB.deleteDatabase('IDBWrapper-Store');
+  //it('merge on ', function (done) {
+  //  var Collection = Collection.extend({
+  //
+  //  });
+  //});
+
+  //it('should fetch 10 records by default', function(){
+  //
+  //  for(var data = [], i = 0; i < 100; i++) {
+  //    data.push({ foo: i });
+  //  }
+  //
+  //  var collection = this.collection;
+  //
+  //  this.collection.saveBatch(data, {
+  //    success: function(){
+  //      expect( collection ).to.have.length( 10 );
+  //      done();
+  //    }
+  //  });
+  //});
+
+  after(function( done ) {
+    var indexedDB = window.indexedDB;
+    _.each( dbNameArray, function( dbName ){
+      indexedDB.deleteDatabase( dbName );
+    });
+    done();
   });
 
 });

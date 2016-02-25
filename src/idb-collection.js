@@ -52,7 +52,6 @@ module.exports = bb.IDBCollection = bb.Collection.extend({
         return self.db.putBatch( models );
       })
       .then( function(){
-        self.set(models, options);
         if( options.success ){
           options.success( self, models, options );
         }

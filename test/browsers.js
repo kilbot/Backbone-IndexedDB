@@ -6,35 +6,17 @@ module.exports = {
         platform: 'OS X 10.11',
         version: '47'
     },
-    sl_chrome_dev_osx_10_11: {
-        base: 'SauceLabs',
-        browserName: 'chrome',
-        platform: 'OS X 10.11',
-        version: 'dev'
-    },
     sl_chrome_47_windows_10: {
         base: 'SauceLabs',
         browserName: 'chrome',
         platform: 'Windows 10',
         version: '47'
     },
-    sl_chrome_dev_windows_10: {
-        base: 'SauceLabs',
-        browserName: 'chrome',
-        platform: 'Windows 10',
-        version: 'dev'
-    },
     sl_chrome_47_linux: {
         base: 'SauceLabs',
         browserName: 'chrome',
         platform: 'Linux',
         version: '47'
-    },
-    sl_chrome_dev_linux: {
-        base: 'SauceLabs',
-        browserName: 'chrome',
-        platform: 'Linux',
-        version: 'dev'
     },
 
     // Firefox
@@ -44,35 +26,17 @@ module.exports = {
         platform: 'OS X 10.11',
         version: '43.0'
     },
-    sl_firefox_dev_osx_10_11: {
-        base: 'SauceLabs',
-        browserName: 'firefox',
-        platform: 'OS X 10.11',
-        version: 'dev'
-    },
     sl_firefox_43_windows_10: {
         base: 'SauceLabs',
         browserName: 'firefox',
         platform: 'Windows 10',
         version: '43.0'
     },
-    sl_firefox_dev_windows_10: {
-        base: 'SauceLabs',
-        browserName: 'firefox',
-        platform: 'Windows 10',
-        version: 'dev'
-    },
     sl_firefox_43_linux: {
         base: 'SauceLabs',
         browserName: 'firefox',
         platform: 'Linux',
         version: '43.0'
-    },
-    sl_firefox_dev_linux: {
-        base: 'SauceLabs',
-        browserName: 'chrome',
-        platform: 'Linux',
-        version: 'dev'
     },
 
     // Safari
