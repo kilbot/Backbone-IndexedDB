@@ -19,7 +19,6 @@ module.exports = bb.IDBCollection = bb.Collection.extend({
     };
 
     this.db = new IDBAdapter(opts);
-    this.db.open();
 
     bb.Collection.apply( this, arguments );
   },

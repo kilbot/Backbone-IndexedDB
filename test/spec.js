@@ -1,5 +1,4 @@
 describe('Backbone IndexedDB', function () {
-
   var dbNameArray = [];
   var Collection;
 
@@ -13,9 +12,18 @@ describe('Backbone IndexedDB', function () {
     dbNameArray.push( storePrefix + name );
   });
 
-  it('should be in a valid state', function () {
+  it('should be in a valid state', function (done) {
     var collection = new Collection();
     expect( collection ).to.be.ok;
+    expect( collection.db ).not.to.be.undefined;
+
+    collection.db.open()
+      .then( function( database ){
+        expect( database ).to.be.instanceOf( IDBDatabase );
+        collection.db.close();
+        done();
+      })
+      .catch( done );
   });
 
   it('should create a model', function (done) {
@@ -39,59 +47,59 @@ describe('Backbone IndexedDB', function () {
       }
     });
   });
-
-  it('should update an existing model', function (done) {
-    var collection = new Collection();
-    collection.create({
-      firstname: 'John',
-      lastname: 'Doe',
-      age: 52,
-      email: 'johndoe@example.com'
-    }, {
-      wait: true,
-      error: done,
-      success: function( model ){
-        model.save({ age: 54 }, {
-          special: true,
-          error: done,
-          success: function(m, resp, opts) {
-            expect(m).to.eql(model);
-            expect(m.get('age')).to.eql(54);
-            expect(resp.age).to.eql(54);
-            expect(opts.special).to.be.true;
-            done();
-          }
-        });
-      }
-    });
-
-  });
-
-  it('should fetch a Backbone Model', function (done) {
-    var collection = new Collection();
-    collection.create({
-      firstname: 'John',
-      lastname: 'Doe',
-      age: 52,
-      email: 'johndoe@example.com'
-    }, {
-      wait: true,
-      error: done,
-      success: function(model){
-        model.set({ age: 53 });
-        model.fetch({
-          special: true,
-          success: function(m, resp, opts) {
-            expect(m).to.eql(model);
-            expect(m.get('age')).to.eql(52);
-            expect(resp.age).to.eql(52);
-            expect(opts.special).to.be.true;
-            done();
-          }
-        });
-      }
-    });
-  });
+  //
+  //it('should update an existing model', function (done) {
+  //  var collection = new Collection();
+  //  collection.create({
+  //    firstname: 'John',
+  //    lastname: 'Doe',
+  //    age: 52,
+  //    email: 'johndoe@example.com'
+  //  }, {
+  //    wait: true,
+  //    error: done,
+  //    success: function( model ){
+  //      model.save({ age: 54 }, {
+  //        special: true,
+  //        error: done,
+  //        success: function(m, resp, opts) {
+  //          expect(m).to.eql(model);
+  //          expect(m.get('age')).to.eql(54);
+  //          expect(resp.age).to.eql(54);
+  //          expect(opts.special).to.be.true;
+  //          done();
+  //        }
+  //      });
+  //    }
+  //  });
+  //
+  //});
+  //
+  //it('should fetch a Backbone Model', function (done) {
+  //  var collection = new Collection();
+  //  collection.create({
+  //    firstname: 'John',
+  //    lastname: 'Doe',
+  //    age: 52,
+  //    email: 'johndoe@example.com'
+  //  }, {
+  //    wait: true,
+  //    error: done,
+  //    success: function(model){
+  //      model.set({ age: 53 });
+  //      model.fetch({
+  //        special: true,
+  //        success: function(m, resp, opts) {
+  //          expect(m).to.eql(model);
+  //          expect(m.get('age')).to.eql(52);
+  //          expect(resp.age).to.eql(52);
+  //          expect(opts.special).to.be.true;
+  //          done();
+  //        }
+  //      });
+  //    }
+  //  });
+  //});
 
   //it('should trigger fetch error arguments', function (done) {
   //  var collection = new Collection();
