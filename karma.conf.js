@@ -29,13 +29,19 @@ module.exports = function (config) {
     sauceLabs: {
       testName: 'Unit Tests',
       connectOptions: {
-        port: 5757,
         logfile: 'sauce_connect.log'
       },
     },
     captureTimeout: 120000,
-    customLaunchers: customLaunchers
-  };
+    customLaunchers: customLaunchers,
+
+    client: {
+      captureConsole: true,
+      mocha: {
+        bail: true
+      }
+    }
+};
 
   if (process.env.TRAVIS) {
     configuration.browsers = Object.keys(customLaunchers);

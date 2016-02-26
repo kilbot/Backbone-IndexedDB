@@ -203,10 +203,43 @@ describe('Backbone IndexedDB', function () {
     });
   });
 
-  //it('merge on ', function (done) {
-  //  var Collection = Collection.extend({
-  //
+  //it('should merge models on a non-keyPath attribute', function (done) {
+  //  var Model = Backbone.IDBModel.extend({
+  //    idAttribute: 'local_id'
   //  });
+  //
+  //  var RemoteCollection = Collection.extend({
+  //    model: Model,
+  //    keyPath: 'local_id',
+  //    indexes: [
+  //      {name: 'local_id', keyPath: 'local_id', unique: true},
+  //      {name: 'id', keyPath: 'id', unique: true}
+  //    ],
+  //  });
+  //
+  //  var collection = new RemoteCollection();
+  //  collection.saveBatch([ { id: 1 }, { id: 2 }, { id: 3 } ])
+  //    .then( function( records ) {
+  //      collection.mergeBatch(
+  //        [ { id: 1, foo: 'bar' }, { id: 2, foo: 'baz' } ],
+  //        { keyField: 'id' }
+  //      )
+  //      .then( function( records ) {
+  //        expect( records ).to.have.length( 2 );
+  //        _.each( records, function( record ){
+  //          expect( record.local_id ).to.not.be.undefined;
+  //        });
+  //
+  //        collection.fetch({
+  //          success: function( collection ){
+  //            expect( collection ).to.have.length( 3 );
+  //            done();
+  //          }
+  //        })
+  //
+  //      });
+  //    });
+  //
   //});
 
   //it('should fetch 10 records by default', function(){
