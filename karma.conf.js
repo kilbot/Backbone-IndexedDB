@@ -34,14 +34,7 @@ module.exports = function (config) {
       },
     },
     captureTimeout: 120000,
-    customLaunchers: customLaunchers,
-
-    client: {
-      captureConsole: true,
-      mocha: {
-        bail: true
-      }
-    }
+    customLaunchers: customLaunchers
 };
 
   if (process.env.TRAVIS) {

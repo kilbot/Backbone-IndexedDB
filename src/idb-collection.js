@@ -1,5 +1,5 @@
 var bb = require('backbone');
-var IndexedDB = require('./promisify-idb-wrapper');
+var IDBAdapter = require('./idb-adapter');
 var IDBModel = require('./idb-model');
 var _ = require('lodash');
 
@@ -18,7 +18,7 @@ module.exports = bb.IDBCollection = bb.Collection.extend({
       indexes       : this.indexes
     };
 
-    this.db = new IndexedDB(opts);
+    this.db = new IDBAdapter(opts);
     this.db.open();
 
     bb.Collection.apply( this, arguments );
