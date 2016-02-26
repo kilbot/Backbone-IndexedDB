@@ -29,6 +29,7 @@ module.exports = function (config) {
     sauceLabs: {
       testName: 'Unit Tests',
       connectOptions: {
+        port: 5757,
         logfile: 'sauce_connect.log'
       },
     },
