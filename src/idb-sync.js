@@ -1,9 +1,9 @@
-var bb = require('backbone');
+//var bb = require('backbone');
 
 /* jshint -W074 */
 module.exports = function(method, entity, options) {
   options = options || {};
-  var isModel = entity instanceof bb.Model;
+  //var isModel = entity instanceof bb.Model;
   var data = entity.toJSON();
 
   return entity.db.open()
@@ -25,7 +25,6 @@ module.exports = function(method, entity, options) {
       }
     })
     .catch(function(resp){
-      debugger;
       if( options.error ){
         options.error(resp);
       }

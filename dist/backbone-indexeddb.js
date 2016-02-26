@@ -56,14 +56,14 @@
 
 /***/ },
 /* 2 */
-/***/ function(module, exports, __webpack_require__) {
+/***/ function(module, exports) {
 
-	var bb = __webpack_require__(1);
+	//var bb = require('backbone');
 
 	/* jshint -W074 */
 	module.exports = function(method, entity, options) {
 	  options = options || {};
-	  var isModel = entity instanceof bb.Model;
+	  //var isModel = entity instanceof bb.Model;
 	  var data = entity.toJSON();
 
 	  return entity.db.open()
@@ -85,7 +85,6 @@
 	      }
 	    })
 	    .catch(function(resp){
-	      debugger;
 	      if( options.error ){
 	        options.error(resp);
 	      }
@@ -222,6 +221,9 @@
 
 	var _ = __webpack_require__(5);
 
+	var indexedDB = window.indexedDB;
+	var Promise = window.Promise;
+
 	var consts = {
 	  'READ_ONLY'         : 'readonly',
 	  'READ_WRITE'        : 'readwrite',
@@ -303,14 +305,13 @@
 
 	      request.onsuccess = function (event) {
 	        var key = event.target.result;
-	        var res = resolve;
 
-	        return new Promise(function (res, reject){
+	        return new Promise(function (undefined, reject){
 	          var request = objectStore.get( key );
 
 	          request.onsuccess = function(event){
 	            resolve( event.target.result );
-	          }
+	          };
 
 	          request.onerror = function (event) {
 	            var err = new Error('get error');

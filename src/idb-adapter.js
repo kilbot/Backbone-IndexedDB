@@ -1,5 +1,8 @@
 var _ = require('lodash');
 
+var indexedDB = window.indexedDB;
+var Promise = window.Promise;
+
 var consts = {
   'READ_ONLY'         : 'readonly',
   'READ_WRITE'        : 'readwrite',
@@ -81,14 +84,13 @@ IDBAdapter.prototype = {
 
       request.onsuccess = function (event) {
         var key = event.target.result;
-        var res = resolve;
 
-        return new Promise(function (res, reject){
+        return new Promise(function (undefined, reject){
           var request = objectStore.get( key );
 
           request.onsuccess = function(event){
             resolve( event.target.result );
-          }
+          };
 
           request.onerror = function (event) {
             var err = new Error('get error');
