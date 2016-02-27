@@ -4,31 +4,33 @@ var bb = require('backbone');
 module.exports = function(method, entity, options) {
   options = options || {};
   var isModel = entity instanceof bb.Model;
+  var data = entity.toJSON();
 
   return entity.db.open()
     .then(function(){
       switch(method){
         case 'read':
           if( isModel ){
-            return entity.db.get(entity);
+            return entity.db.get( entity.id, options );
           }
-          return entity.db.getAll();
+          return entity.db.getAll( options );
         case 'create':
-          return entity.db.update(entity);
+          return entity.db.put( data, options );
         case 'update':
-          return entity.db.update(entity);
+          return entity.db.put( data, options );
         case 'delete':
           if( isModel ){
-            return entity.db.destroy(entity);
+            return entity.db.delete( entity.id, options );
           }
+          return;
       }
     })
-    .done(function(resp){
+    .then(function(resp){
       if(options.success){
         options.success(resp);
       }
     })
-    .fail(function(resp){
+    .catch(function(resp){
       if( options.error ){
         options.error(resp);
       }

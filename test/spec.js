@@ -1,11 +1,10 @@
 describe('Backbone IndexedDB', function () {
-
   var dbNameArray = [];
   var Collection;
 
   beforeEach(function(){
     var storePrefix = 'Test-';
-    var name = Date.now();
+    var name = Date.now().toString();
     Collection = Backbone.IDBCollection.extend({
       storePrefix: storePrefix,
       name: name
@@ -13,33 +12,21 @@ describe('Backbone IndexedDB', function () {
     dbNameArray.push( storePrefix + name );
   });
 
-  it('should be in a valid state', function () {
+  it('should be in a valid state', function (done) {
     var collection = new Collection();
     expect( collection ).to.be.ok;
-    expect( collection.db.store ).to.be.instanceOf( IDBStore );
-  });
+    expect( collection.db ).not.to.be.undefined;
 
-  it('should create new models', function (done) {
-    var collection = new Collection();
-    var model = collection.create({
-      firstname: 'Jane',
-      lastname: 'Smith',
-      age: 35,
-      email: 'janesmith@example.com'
-    }, {
-      wait: true,
-      special: true,
-      error: done,
-      success: function(m, resp, opts){
-        expect( collection ).to.have.length(1);
-        expect( m ).eqls( model );
-        expect( opts.special ).to.be.true;
+    collection.db.open()
+      .then( function( database ){
+        expect( database ).to.be.instanceOf( IDBDatabase );
+        collection.db.close();
         done();
-      }
-    });
+      })
+      .catch( done );
   });
 
-  it('should save a model', function (done) {
+  it('should create a model', function (done) {
     var collection = new Collection();
     var model = collection.add({
       firstname: 'John',
@@ -63,27 +50,32 @@ describe('Backbone IndexedDB', function () {
 
   it('should update an existing model', function (done) {
     var collection = new Collection();
-    var model = collection.create({
+    collection.create({
       firstname: 'John',
       lastname: 'Doe',
       age: 52,
       email: 'johndoe@example.com'
-    });
-
-    model.save({ age: 54 }, {
-      special: true,
+    }, {
+      wait: true,
       error: done,
-      success: function(m, resp, opts) {
-        expect(m).to.eql(model);
-        expect(m.get('age')).to.eql(54);
-        expect(resp.age).to.eql(54);
-        expect(opts.special).to.be.true;
-        done();
+      success: function( model ){
+        model.save({ age: 54 }, {
+          special: true,
+          error: done,
+          success: function(m, resp, opts) {
+            expect(m).to.eql(model);
+            expect(m.get('age')).to.eql(54);
+            expect(resp.age).to.eql(54);
+            expect(opts.special).to.be.true;
+            done();
+          }
+        });
       }
     });
+
   });
 
-  it('should fetch a Backbone Model', function (done) {
+  it('should fetch a model', function (done) {
     var collection = new Collection();
     collection.create({
       firstname: 'John',
@@ -111,7 +103,7 @@ describe('Backbone IndexedDB', function () {
 
   it('should trigger fetch error arguments', function (done) {
     var collection = new Collection();
-    var keyPath = collection.db.store.keyPath;
+    var keyPath = collection.db.opts.keyPath;
     var model = {};
     model[keyPath] = null;
     model = collection.add(model);
@@ -120,6 +112,7 @@ describe('Backbone IndexedDB', function () {
       success: done,
       error: function(m, resp, opts){
         expect(m).to.eql(model);
+        expect(resp).to.be.instanceOf(window.Error);
         expect(opts.special).to.be.true;
         done();
       }
@@ -144,13 +137,10 @@ describe('Backbone IndexedDB', function () {
           success: function(m, resp, opts) {
             expect(m).to.eql(model);
             expect(m.get('age')).to.eql(52);
-            expect(resp.age).to.eql(52);
+            expect(resp).to.be.undefined;
             expect(opts.special).to.be.true;
             expect(collection).to.have.length(0);
-            collection.db.store.count( function(count){
-              expect( count ).equals(0);
-              done();
-            });
+            done();
           }
         });
       }
@@ -172,7 +162,7 @@ describe('Backbone IndexedDB', function () {
 
   it('should batch save a collection of models', function (done) {
     var collection = new Collection();
-    collection.saveBatch([
+    collection.putBatch([
       {
         firstname: 'Jane',
         lastname: 'Smith',
@@ -196,67 +186,98 @@ describe('Backbone IndexedDB', function () {
       _.each( records, function( record ){
         expect( record.id ).to.not.be.undefined;
       });
-      collection.db.store.count( function(count){
-        expect( count ).equals( 3 );
-        done();
-      });
+      done();
     });
   });
 
-  //it('should merge models on a non-keyPath attribute', function (done) {
-  //  var Model = Backbone.IDBModel.extend({
-  //    idAttribute: 'local_id'
-  //  });
-  //
-  //  var RemoteCollection = Collection.extend({
-  //    model: Model,
-  //    keyPath: 'local_id',
-  //    indexes: [
-  //      {name: 'local_id', keyPath: 'local_id', unique: true},
-  //      {name: 'id', keyPath: 'id', unique: true}
-  //    ],
-  //  });
-  //
-  //  var collection = new RemoteCollection();
-  //  collection.saveBatch([ { id: 1 }, { id: 2 }, { id: 3 } ])
-  //    .then( function( records ) {
-  //      collection.mergeBatch(
-  //        [ { id: 1, foo: 'bar' }, { id: 2, foo: 'baz' } ],
-  //        { keyField: 'id' }
-  //      )
-  //      .then( function( records ) {
-  //        expect( records ).to.have.length( 2 );
-  //        _.each( records, function( record ){
-  //          expect( record.local_id ).to.not.be.undefined;
-  //        });
-  //
-  //        collection.fetch({
-  //          success: function( collection ){
-  //            expect( collection ).to.have.length( 3 );
-  //            done();
-  //          }
-  //        })
-  //
-  //      });
-  //    });
-  //
-  //});
+  it('should count indexeddb records', function (done) {
+    var collection = new Collection();
+    collection.putBatch([
+        {
+          firstname: 'Jane',
+          lastname: 'Smith',
+          age: 35,
+          email: 'janesmith@example.com'
+        }, {
+          firstname: 'John',
+          lastname: 'Doe',
+          age: 52,
+          email: 'johndoe@example.com'
+        }, {
+          firstname: 'Joe',
+          lastname: 'Bloggs',
+          age: 28,
+          email: 'joebloggs@example.com'
+        }
+      ])
+      .then( function() {
+        collection.count()
+          .then(function(count){
+            expect( count ).equals( 3 );
+            done();
+          });
+      });
+  });
 
-  //it('should fetch 10 records by default', function(){
-  //
-  //  for(var data = [], i = 0; i < 100; i++) {
-  //    data.push({ foo: i });
-  //  }
-  //
-  //  var collection = this.collection;
-  //
-  //  this.collection.saveBatch(data, {
-  //    success: function(){
-  //      expect( collection ).to.have.length( 10 );
-  //      done();
-  //    }
-  //  });
-  //});
+  it('should fetch 10 records by default', function(done){
+    for(var data = [], i = 0; i < 100; i++) {
+      data.push({ foo: i });
+    }
+
+    var collection = new Collection();
+
+    collection.putBatch(data)
+      .then(function(){
+        collection.fetch({
+          error: done,
+          success: function(){
+            expect( collection ).to.have.length( 10 );
+            done();
+          }
+        })
+      });
+  });
+
+  it('should merge models on a non-keyPath attribute', function (done) {
+    var Model = Backbone.IDBModel.extend({
+      idAttribute: 'local_id'
+    });
+
+    var DualCollection = Collection.extend({
+      model: Model,
+      keyPath: 'local_id',
+      indexes: [
+        {name: 'id', keyPath: 'id', unique: true}
+      ],
+    });
+
+    var collection = new DualCollection();
+    collection.putBatch([ { id: 1 }, { id: 2 }, { id: 3 } ])
+      .then( function() {
+        collection.putBatch(
+          [ { id: 1, foo: 'bar' }, { id: 2, foo: 'baz' } ],
+          { index: 'id' }
+        )
+        .then( function( records ) {
+          expect( records ).to.have.length( 2 );
+          _.each( records, function( record ){
+            expect( record.local_id ).to.not.be.undefined;
+          });
+
+          collection.fetch({
+            error: done,
+            success: function( collection ){
+              expect( collection ).to.have.length( 3 );
+              expect( collection.findWhere({ id: 1 }).get('foo')).equals('bar');
+              expect( collection.findWhere({ id: 2 }).get('foo')).equals('baz');
+              done();
+            }
+          })
+
+        });
+      });
+
+  });
 
   after(function( done ) {
     var indexedDB = window.indexedDB;

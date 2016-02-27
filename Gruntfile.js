@@ -5,11 +5,11 @@ module.exports = function(grunt) {
     watch: {
       js: {
         files: ['src/*.js'],
-        tasks: ['webpack', 'jshint', 'karma']
+        tasks: ['webpack', 'jshint']
       },
       test: {
         files: ['tests/*.spec.js'],
-        tasks: ['jshint', 'karma']
+        tasks: ['jshint']
       }
     },
 
@@ -61,7 +61,7 @@ module.exports = function(grunt) {
 
   require('load-grunt-tasks')(grunt);
   grunt.registerTask('test', ['webpack', 'jshint', 'karma']);
-  grunt.registerTask('dev', ['test', 'watch']);
+  grunt.registerTask('dev', ['webpack', 'jshint', 'watch']);
   grunt.registerTask('default', ['test']);
 
 }

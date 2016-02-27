@@ -1,5 +1,5 @@
 var bb = require('backbone');
-var IndexedDB = require('./promisify-idb-wrapper');
+var IDBAdapter = require('./idb-adapter');
 var IDBModel = require('./idb-model');
 var _ = require('lodash');
 
@@ -7,6 +7,8 @@ var _ = require('lodash');
 module.exports = bb.IDBCollection = bb.Collection.extend({
 
   model: IDBModel,
+
+  pageSize: 10,
 
   constructor: function(){
     var opts = {
@@ -18,8 +20,7 @@ module.exports = bb.IDBCollection = bb.Collection.extend({
       indexes       : this.indexes
     };
 
-    this.db = new IndexedDB(opts);
-    this.db.open();
+    this.db = new IDBAdapter(opts);
 
     bb.Collection.apply( this, arguments );
   },
@@ -41,7 +42,18 @@ module.exports = bb.IDBCollection = bb.Collection.extend({
   /**
    *
    */
-  saveBatch: function( models, options ){
+  count: function(){
+    var self = this;
+    return this.db.open()
+      .then(function(){
+        return self.db.count();
+      });
+  },
+
+  /**
+   *
+   */
+  putBatch: function( models, options ){
     options = options || {};
     var self = this;
     if( _.isEmpty( models ) ){
@@ -52,13 +64,7 @@ module.exports = bb.IDBCollection = bb.Collection.extend({
     }
     return this.db.open()
       .then( function() {
-        return self.db.putBatch( models );
-      })
-      .then( function(){
-        if( options.success ){
-          options.success( self, models, options );
-        }
-        return models;
+        return self.db.putBatch( models, options );
       });
   },
 
