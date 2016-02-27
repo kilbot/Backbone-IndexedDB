@@ -222,11 +222,42 @@ IDBAdapter.prototype = {
     var limit = options.limit || 10;
     var objectStore = this.getObjectStore( consts.READ_ONLY );
 
+    // getAll fallback
+    if( objectStore.getAll === undefined ){
+      return this._getAll( options );
+    }
+
     return new Promise(function (resolve, reject) {
       var request = objectStore.getAll(null, limit);
 
       request.onsuccess = function (event) {
         resolve( event.target.result );
+      };
+
+      request.onerror = function (event) {
+        var err = new Error('getAll error');
+        err.code = event.target.errorCode;
+        reject(err);
+      };
+    });
+  },
+
+  _getAll: function( options ){
+    options = options || {};
+    var limit = options.limit || 10;
+    var objectStore = this.getObjectStore( consts.READ_ONLY );
+
+    return new Promise(function (resolve, reject) {
+      var request = objectStore.openCursor();
+      var records = [];
+
+      request.onsuccess = function (event) {
+        var cursor = event.target.result;
+        if( cursor && records.length < limit ){
+          records.push( cursor.value );
+          return cursor.continue();
+        }
+        resolve( records );
       };
 
       request.onerror = function (event) {
