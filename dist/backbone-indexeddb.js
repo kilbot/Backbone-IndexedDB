@@ -56,27 +56,33 @@
 
 /***/ },
 /* 2 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
-	//var bb = require('backbone');
+	var bb = __webpack_require__(1);
 
 	/* jshint -W074 */
 	module.exports = function(method, entity, options) {
 	  options = options || {};
-	  //var isModel = entity instanceof bb.Model;
+	  var isModel = entity instanceof bb.Model;
 	  var data = entity.toJSON();
 
 	  return entity.db.open()
 	    .then(function(){
 	      switch(method){
 	        case 'read':
-
+	          if( isModel ){
+	            return entity.db.get( entity.id );
+	          }
+	          return;
 	        case 'create':
 	          return entity.db.put( data );
 	        case 'update':
-
+	          return entity.db.put( data );
 	        case 'delete':
-
+	          if( isModel ){
+	            return entity.db.delete( entity.id );
+	          }
+	          return;
 	      }
 	    })
 	    .then(function(resp){
@@ -139,6 +145,17 @@
 	  /**
 	   *
 	   */
+	  count: function(){
+	    var self = this;
+	    return this.db.open()
+	      .then(function(){
+	        return self.db.count();
+	      });
+	  },
+
+	  /**
+	   *
+	   */
 	  saveBatch: function( models, options ){
 	    options = options || {};
 	    var self = this;
@@ -152,11 +169,11 @@
 	      .then( function() {
 	        return self.db.putBatch( models );
 	      })
-	      .then( function(){
+	      .then( function( resp ){
 	        if( options.success ){
-	          options.success( self, models, options );
+	          options.success( self, resp, options );
 	        }
-	        return models;
+	        return resp;
 	      });
 	  },
 
@@ -293,33 +310,55 @@
 	    this._open = undefined;
 	  },
 
-	  put: function( data ){
-	    var self = this;
+	  getTransaction: function( access ){
+	    return this.db.transaction([this.opts.storeName], access);
+	    // transaction.oncomplete
+	    // transaction.onabort
+	    // transaction.onerror
+	  },
+
+	  getObjectStore: function( access ){
+	    return this.getTransaction(access).objectStore(this.opts.storeName);
+	  },
+
+	  count: function(){
+	    var objectStore = this.getObjectStore( consts.READ_ONLY );
 
 	    return new Promise(function (resolve, reject) {
-	      var objectStore = self.db
-	        .transaction([self.opts.storeName], consts.READ_WRITE)
-	        .objectStore(self.opts.storeName);
+	      var request = objectStore.count();
 
+	      request.onsuccess = function (event) {
+	        resolve( event.target.result );
+	      };
+
+	      request.onerror = function (event) {
+	        var err = new Error('count error');
+	        err.code = event.target.errorCode;
+	        reject(err);
+	      };
+	    });
+	  },
+
+	  put: function( data, options ){
+	    options = options || {};
+	    var self = this, objectStore;
+
+	    // continue an open transaction
+	    if( options.objectStore ){
+	      objectStore = options.objectStore;
+	    } else {
+	      objectStore = this.getObjectStore( consts.READ_WRITE );
+	    }
+
+	    return new Promise(function (resolve, reject) {
 	      var request = objectStore.put( data );
 
 	      request.onsuccess = function (event) {
-	        var key = event.target.result;
-
-	        return new Promise(function (undefined, reject){
-	          var request = objectStore.get( key );
-
-	          request.onsuccess = function(event){
-	            resolve( event.target.result );
-	          };
-
-	          request.onerror = function (event) {
-	            var err = new Error('get error');
-	            err.code = event.target.errorCode;
-	            reject(err);
-	          };
-
-	        });
+	        self.get( event.target.result, {
+	          objectStore: objectStore
+	        })
+	        .then( resolve )
+	        .catch( reject );
 	      };
 
 	      request.onerror = function (event) {
@@ -328,97 +367,67 @@
 	        reject(err);
 	      };
 	    });
+	  },
+
+	  get: function( key, options ){
+	    options = options || {};
+	    var objectStore;
+
+	    // continue an open transaction
+	    if( options.objectStore ){
+	      objectStore = options.objectStore;
+	    } else {
+	      objectStore = this.getObjectStore( consts.READ_ONLY );
+	    }
+
+	    return new Promise(function (resolve, reject) {
+	      var request = objectStore.get( key );
+
+	      request.onsuccess = function (event) {
+	        resolve( event.target.result );
+	      };
+
+	      request.onerror = function (event) {
+	        var err = new Error('get error');
+	        err.code = event.target.errorCode;
+	        reject(err);
+	      };
+	    });
+	  },
+
+	  delete: function( key, options ){
+	    options = options || {};
+	    var objectStore = this.getObjectStore( consts.READ_WRITE );
+
+	    return new Promise(function (resolve, reject) {
+	      var request = objectStore.delete( key );
+
+	      request.onsuccess = function (event) {
+	        resolve( event.target.result ); // undefined
+	      };
+
+	      request.onerror = function (event) {
+	        var err = new Error('delete error');
+	        err.code = event.target.errorCode;
+	        reject(err);
+	      };
+	    });
+	  },
+
+	  putBatch: function( dataArray, options ){
+	    options = options || {};
+	    var objectStore = this.getObjectStore( consts.READ_WRITE );
+	    var batch = [];
+
+	    _.each( dataArray, function(data){
+	      options.objectStore = objectStore;
+	      batch.push( this.put(data, options) );
+	    }.bind(this));
+
+	    return Promise.all(batch);
 	  }
 
 	};
-
-	//var IDBAdapter = function(){
-	//
-	//
-	//
-	//
-	//  var migration = {};
-	//  migration[opts.dbVersion] = function( database ){
-	//    var objStore = database.createObjectStore(opts.storeName, {
-	//      keyPath: opts.keyPath,
-	//      autoIncrement: opts.autoIncrement
-	//    });
-	//    _.each( opts.indexes, function( index ){
-	//      objStore.createIndex(index.name, index.keyPath, index);
-	//    });
-	//  };
-	//
-	//  return _.extend( {}, skladAPI, {
-	//
-	//    /**
-	//     *
-	//     */
-	//    open: function(){
-	//      if( ! this._openPromise ){
-	//        var dbName = opts.storePrefix + opts.storeName;
-	//        this._openPromise = skladAPI.open( dbName, {
-	//          version: opts.dbVersion,
-	//          migration: migration
-	//        });
-	//      }
-	//      return this._openPromise;
-	//    },
-	//
-	//    /**
-	//     *
-	//     */
-	//    create: function( entity, options ){
-	//      var data = entity.toJSON();
-	//      return this.open()
-	//        .then( function( conn ) {
-	//          return conn.insert( opts.storeName, data );
-	//        })
-	//        .then( function( key ) {
-	//          data[ opts.keyPath ] = key;
-	//          return data;
-	//        });
-	//    },
-	//
-	//    /**
-	//     *
-	//     */
-	//    read: function( entity, options ){
-	//      var key;
-	//      if( entity instanceof bb.Model ){
-	//        key = entity.get( opts.keyPath );
-	//      }
-	//      return this.open()
-	//        .then( function( conn ) {
-	//          return conn.get( opts.storeName, {
-	//            index: options.index || opts.keyPath,
-	//            key: key
-	//          });
-	//        });
-	//    },
-	//
-	//    /**
-	//     *
-	//     */
-	//    update: function( entity, options ){
-	//      var data = entity.toJSON();
-	//      return this.open()
-	//        .then( function( conn ) {
-	//          return conn.upsert( opts.storeName, data );
-	//        })
-	//        .then( function() {
-	//          return data;
-	//        });
-	//    },
-	//
-	//    /**
-	//     *
-	//     */
-	//    delete: function( entity, options ){
-	//
-	//    }
-	//
-	//  });
-	//};
 
 	module.exports = IDBAdapter;
 

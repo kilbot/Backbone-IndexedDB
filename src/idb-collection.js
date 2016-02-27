@@ -40,6 +40,17 @@ module.exports = bb.IDBCollection = bb.Collection.extend({
   /**
    *
    */
+  count: function(){
+    var self = this;
+    return this.db.open()
+      .then(function(){
+        return self.db.count();
+      });
+  },
+
+  /**
+   *
+   */
   saveBatch: function( models, options ){
     options = options || {};
     var self = this;
@@ -53,11 +64,11 @@ module.exports = bb.IDBCollection = bb.Collection.extend({
       .then( function() {
         return self.db.putBatch( models );
       })
-      .then( function(){
+      .then( function( resp ){
         if( options.success ){
-          options.success( self, models, options );
+          options.success( self, resp, options );
         }
-        return models;
+        return resp;
       });
   },
 

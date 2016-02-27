@@ -47,153 +47,177 @@ describe('Backbone IndexedDB', function () {
       }
     });
   });
-  //
-  //it('should update an existing model', function (done) {
-  //  var collection = new Collection();
-  //  collection.create({
-  //    firstname: 'John',
-  //    lastname: 'Doe',
-  //    age: 52,
-  //    email: 'johndoe@example.com'
-  //  }, {
-  //    wait: true,
-  //    error: done,
-  //    success: function( model ){
-  //      model.save({ age: 54 }, {
-  //        special: true,
-  //        error: done,
-  //        success: function(m, resp, opts) {
-  //          expect(m).to.eql(model);
-  //          expect(m.get('age')).to.eql(54);
-  //          expect(resp.age).to.eql(54);
-  //          expect(opts.special).to.be.true;
-  //          done();
-  //        }
-  //      });
-  //    }
-  //  });
-  //
-  //});
-  //
-  //it('should fetch a Backbone Model', function (done) {
-  //  var collection = new Collection();
-  //  collection.create({
-  //    firstname: 'John',
-  //    lastname: 'Doe',
-  //    age: 52,
-  //    email: 'johndoe@example.com'
-  //  }, {
-  //    wait: true,
-  //    error: done,
-  //    success: function(model){
-  //      model.set({ age: 53 });
-  //      model.fetch({
-  //        special: true,
-  //        success: function(m, resp, opts) {
-  //          expect(m).to.eql(model);
-  //          expect(m.get('age')).to.eql(52);
-  //          expect(resp.age).to.eql(52);
-  //          expect(opts.special).to.be.true;
-  //          done();
-  //        }
-  //      });
-  //    }
-  //  });
-  //});
 
-  //it('should trigger fetch error arguments', function (done) {
-  //  var collection = new Collection();
-  //  var keyPath = collection.db.store.keyPath;
-  //  var model = {};
-  //  model[keyPath] = null;
-  //  model = collection.add(model);
-  //  model.fetch({
-  //    special: true,
-  //    success: done,
-  //    error: function(m, resp, opts){
-  //      expect(m).to.eql(model);
-  //      expect(opts.special).to.be.true;
-  //      done();
-  //    }
-  //  });
-  //});
-  //
-  //it('should destroy a model', function (done) {
-  //  var collection = new Collection();
-  //  collection.create({
-  //    firstname: 'John',
-  //    lastname: 'Doe',
-  //    age: 52,
-  //    email: 'johndoe@example.com'
-  //  }, {
-  //    wait: true,
-  //    error: done,
-  //    success: function(model){
-  //      model.destroy({
-  //        wait: true,
-  //        special: true,
-  //        error: done,
-  //        success: function(m, resp, opts) {
-  //          expect(m).to.eql(model);
-  //          expect(m.get('age')).to.eql(52);
-  //          expect(resp.age).to.eql(52);
-  //          expect(opts.special).to.be.true;
-  //          expect(collection).to.have.length(0);
-  //          collection.db.store.count( function(count){
-  //            expect( count ).equals(0);
-  //            done();
-  //          });
-  //        }
-  //      });
-  //    }
-  //  });
-  //});
-  //
-  //it('should destroy a new model', function (done) {
-  //  var collection = new Collection();
-  //  var model = collection.add({
-  //    firstname: 'John',
-  //    lastname: 'Doe',
-  //    age: 52,
-  //    email: 'johndoe@example.com'
-  //  });
-  //  expect( model.destroy() ).to.be.false;
-  //  expect( collection ).to.have.length(0);
-  //  done();
-  //});
-  //
-  //it('should batch save a collection of models', function (done) {
-  //  var collection = new Collection();
-  //  collection.saveBatch([
-  //    {
-  //      firstname: 'Jane',
-  //      lastname: 'Smith',
-  //      age: 35,
-  //      email: 'janesmith@example.com'
-  //    }, {
-  //      firstname: 'John',
-  //      lastname: 'Doe',
-  //      age: 52,
-  //      email: 'johndoe@example.com'
-  //    }, {
-  //      firstname: 'Joe',
-  //      lastname: 'Bloggs',
-  //      age: 28,
-  //      email: 'joebloggs@example.com'
-  //    }
-  //  ])
-  //  .then( function( records ) {
-  //    expect( collection ).to.have.length( 0 );
-  //    expect( records ).to.have.length( 3 );
-  //    _.each( records, function( record ){
-  //      expect( record.id ).to.not.be.undefined;
-  //    });
-  //    collection.db.store.count( function(count){
-  //      expect( count ).equals( 3 );
-  //      done();
-  //    });
-  //  });
-  //});
+  it('should update an existing model', function (done) {
+    var collection = new Collection();
+    collection.create({
+      firstname: 'John',
+      lastname: 'Doe',
+      age: 52,
+      email: 'johndoe@example.com'
+    }, {
+      wait: true,
+      error: done,
+      success: function( model ){
+        model.save({ age: 54 }, {
+          special: true,
+          error: done,
+          success: function(m, resp, opts) {
+            expect(m).to.eql(model);
+            expect(m.get('age')).to.eql(54);
+            expect(resp.age).to.eql(54);
+            expect(opts.special).to.be.true;
+            done();
+          }
+        });
+      }
+    });
+
+  });
+
+  it('should fetch a model', function (done) {
+    var collection = new Collection();
+    collection.create({
+      firstname: 'John',
+      lastname: 'Doe',
+      age: 52,
+      email: 'johndoe@example.com'
+    }, {
+      wait: true,
+      error: done,
+      success: function(model){
+        model.set({ age: 53 });
+        model.fetch({
+          special: true,
+          success: function(m, resp, opts) {
+            expect(m).to.eql(model);
+            expect(m.get('age')).to.eql(52);
+            expect(resp.age).to.eql(52);
+            expect(opts.special).to.be.true;
+            done();
+          }
+        });
+      }
+    });
+  });
+
+  it('should trigger fetch error arguments', function (done) {
+    var collection = new Collection();
+    var keyPath = collection.db.opts.keyPath;
+    var model = {};
+    model[keyPath] = null;
+    model = collection.add(model);
+    model.fetch({
+      special: true,
+      success: done,
+      error: function(m, resp, opts){
+        expect(m).to.eql(model);
+        expect(resp).to.be.instanceOf(DOMException);
+        expect(opts.special).to.be.true;
+        done();
+      }
+    });
+  });
+
+  it('should destroy a model', function (done) {
+    var collection = new Collection();
+    collection.create({
+      firstname: 'John',
+      lastname: 'Doe',
+      age: 52,
+      email: 'johndoe@example.com'
+    }, {
+      wait: true,
+      error: done,
+      success: function(model){
+        model.destroy({
+          wait: true,
+          special: true,
+          error: done,
+          success: function(m, resp, opts) {
+            expect(m).to.eql(model);
+            expect(m.get('age')).to.eql(52);
+            expect(resp).to.be.undefined;
+            expect(opts.special).to.be.true;
+            expect(collection).to.have.length(0);
+            done();
+          }
+        });
+      }
+    });
+  });
+
+  it('should destroy a new model', function (done) {
+    var collection = new Collection();
+    var model = collection.add({
+      firstname: 'John',
+      lastname: 'Doe',
+      age: 52,
+      email: 'johndoe@example.com'
+    });
+    expect( model.destroy() ).to.be.false;
+    expect( collection ).to.have.length(0);
+    done();
+  });
+
+  it('should batch save a collection of models', function (done) {
+    var collection = new Collection();
+    collection.saveBatch([
+      {
+        firstname: 'Jane',
+        lastname: 'Smith',
+        age: 35,
+        email: 'janesmith@example.com'
+      }, {
+        firstname: 'John',
+        lastname: 'Doe',
+        age: 52,
+        email: 'johndoe@example.com'
+      }, {
+        firstname: 'Joe',
+        lastname: 'Bloggs',
+        age: 28,
+        email: 'joebloggs@example.com'
+      }
+    ])
+    .then( function( records ) {
+      expect( collection ).to.have.length( 0 );
+      expect( records ).to.have.length( 3 );
+      _.each( records, function( record ){
+        expect( record.id ).to.not.be.undefined;
+      });
+      done();
+    });
+  });
+
+  it('should count indexeddb records', function (done) {
+    var collection = new Collection();
+    collection.saveBatch([
+        {
+          firstname: 'Jane',
+          lastname: 'Smith',
+          age: 35,
+          email: 'janesmith@example.com'
+        }, {
+          firstname: 'John',
+          lastname: 'Doe',
+          age: 52,
+          email: 'johndoe@example.com'
+        }, {
+          firstname: 'Joe',
+          lastname: 'Bloggs',
+          age: 28,
+          email: 'joebloggs@example.com'
+        }
+      ])
+      .then( function() {
+        collection.count()
+          .then(function(count){
+            expect( count ).equals( 3 );
+            done();
+          });
+      });
+  });
 
   //it('should merge models on a non-keyPath attribute', function (done) {
   //  var Model = Backbone.IDBModel.extend({
