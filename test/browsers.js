@@ -92,10 +92,10 @@ module.exports = {
     platform: 'Linux',
     version: '5.1'
   },
-  sl_android_4_4_4: {
-    base: 'SauceLabs',
-    browserName: 'android',
-    platform: 'Linux',
-    version: '4.4.4'
-  }
+  //sl_android_4_4: {
+  //  base: 'SauceLabs',
+  //  browserName: 'android',
+  //  platform: 'Linux',
+  //  version: '4.4'
+  //}
 }

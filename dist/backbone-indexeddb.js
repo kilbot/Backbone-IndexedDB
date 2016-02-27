@@ -71,16 +71,16 @@
 	      switch(method){
 	        case 'read':
 	          if( isModel ){
-	            return entity.db.get( entity.id );
+	            return entity.db.get( entity.id, options );
 	          }
-	          return;
+	          return entity.db.getAll( options );
 	        case 'create':
-	          return entity.db.put( data );
+	          return entity.db.put( data, options );
 	        case 'update':
-	          return entity.db.put( data );
+	          return entity.db.put( data, options );
 	        case 'delete':
 	          if( isModel ){
-	            return entity.db.delete( entity.id );
+	            return entity.db.delete( entity.id, options );
 	          }
 	          return;
 	      }
@@ -112,6 +112,8 @@
 	module.exports = bb.IDBCollection = bb.Collection.extend({
 
 	  model: IDBModel,
+
+	  pageSize: 10,
 
 	  constructor: function(){
 	    var opts = {
@@ -156,7 +158,7 @@
 	  /**
 	   *
 	   */
-	  saveBatch: function( models, options ){
+	  putBatch: function( models, options ){
 	    options = options || {};
 	    var self = this;
 	    if( _.isEmpty( models ) ){
@@ -167,13 +169,7 @@
 	    }
 	    return this.db.open()
 	      .then( function() {
-	        return self.db.putBatch( models );
-	      })
-	      .then( function( resp ){
-	        if( options.success ){
-	          options.success( self, resp, options );
-	        }
-	        return resp;
+	        return self.db.putBatch( models, options );
 	      });
 	  },
 
@@ -343,6 +339,11 @@
 	    options = options || {};
 	    var self = this, objectStore;
 
+	    // merge on index keyPath
+	    if( options.index ){
+	      return this.merge( data, options );
+	    }
+
 	    // continue an open transaction
 	    if( options.objectStore ){
 	      objectStore = options.objectStore;
@@ -416,15 +417,58 @@
 
 	  putBatch: function( dataArray, options ){
 	    options = options || {};
-	    var objectStore = this.getObjectStore( consts.READ_WRITE );
+	    options.objectStore = this.getObjectStore( consts.READ_WRITE );
 	    var batch = [];
 
 	    _.each( dataArray, function(data){
-	      options.objectStore = objectStore;
 	      batch.push( this.put(data, options) );
 	    }.bind(this));
 
 	    return Promise.all(batch);
+	  },
+
+	  merge: function( data, options ){
+	    options = options || {};
+	    var self = this, objectStore = this.getObjectStore( consts.READ_WRITE );
+	    var keyPath = options.index || this.opts.keyPath;
+	    var key = data[keyPath];
+
+	    return new Promise(function (resolve, reject) {
+	      var objectStoreIndex = objectStore.index( keyPath );
+	      var request = objectStoreIndex.get( key );
+
+	      request.onsuccess = function (event) {
+	        var merged = _.merge( event.target.result, data );
+	        self.put( merged, { objectStore: objectStore } )
+	          .then( resolve );
+	      };
+
+	      request.onerror = function (event) {
+	        var err = new Error('merge error');
+	        err.code = event.target.errorCode;
+	        reject(err);
+	      };
+	    });
+	  },
+
+	  getAll: function( options ){
+	    options = options || {};
+	    var limit = options.limit || 10;
+	    var objectStore = this.getObjectStore( consts.READ_ONLY );
+
+	    return new Promise(function (resolve, reject) {
+	      var request = objectStore.getAll(null, limit);
+
+	      request.onsuccess = function (event) {
+	        resolve( event.target.result );
+	      };
+
+	      request.onerror = function (event) {
+	        var err = new Error('getAll error');
+	        err.code = event.target.errorCode;
+	        reject(err);
+	      };
+	    });
 	  }
 
 	};

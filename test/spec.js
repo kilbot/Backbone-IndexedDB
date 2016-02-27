@@ -112,7 +112,7 @@ describe('Backbone IndexedDB', function () {
       success: done,
       error: function(m, resp, opts){
         expect(m).to.eql(model);
-        expect(resp).to.be.instanceOf(DOMException);
+        expect(resp).to.be.instanceOf(window.Error);
         expect(opts.special).to.be.true;
         done();
       }
@@ -162,7 +162,7 @@ describe('Backbone IndexedDB', function () {
 
   it('should batch save a collection of models', function (done) {
     var collection = new Collection();
-    collection.saveBatch([
+    collection.putBatch([
       {
         firstname: 'Jane',
         lastname: 'Smith',
@@ -192,7 +192,7 @@ describe('Backbone IndexedDB', function () {
 
   it('should count indexeddb records', function (done) {
     var collection = new Collection();
-    collection.saveBatch([
+    collection.putBatch([
         {
           firstname: 'Jane',
           lastname: 'Smith',
@@ -219,60 +219,65 @@ describe('Backbone IndexedDB', function () {
       });
   });
 
-  //it('should merge models on a non-keyPath attribute', function (done) {
-  //  var Model = Backbone.IDBModel.extend({
-  //    idAttribute: 'local_id'
-  //  });
-  //
-  //  var RemoteCollection = Collection.extend({
-  //    model: Model,
-  //    keyPath: 'local_id',
-  //    indexes: [
-  //      {name: 'local_id', keyPath: 'local_id', unique: true},
-  //      {name: 'id', keyPath: 'id', unique: true}
-  //    ],
-  //  });
-  //
-  //  var collection = new RemoteCollection();
-  //  collection.saveBatch([ { id: 1 }, { id: 2 }, { id: 3 } ])
-  //    .then( function( records ) {
-  //      collection.mergeBatch(
-  //        [ { id: 1, foo: 'bar' }, { id: 2, foo: 'baz' } ],
-  //        { keyField: 'id' }
-  //      )
-  //      .then( function( records ) {
-  //        expect( records ).to.have.length( 2 );
-  //        _.each( records, function( record ){
-  //          expect( record.local_id ).to.not.be.undefined;
-  //        });
-  //
-  //        collection.fetch({
-  //          success: function( collection ){
-  //            expect( collection ).to.have.length( 3 );
-  //            done();
-  //          }
-  //        })
-  //
-  //      });
-  //    });
-  //
-  //});
+  it('should fetch 10 records by default', function(done){
+    for(var data = [], i = 0; i < 100; i++) {
+      data.push({ foo: i });
+    }
 
-  //it('should fetch 10 records by default', function(){
-  //
-  //  for(var data = [], i = 0; i < 100; i++) {
-  //    data.push({ foo: i });
-  //  }
-  //
-  //  var collection = this.collection;
-  //
-  //  this.collection.saveBatch(data, {
-  //    success: function(){
-  //      expect( collection ).to.have.length( 10 );
-  //      done();
-  //    }
-  //  });
-  //});
+    var collection = new Collection();
+
+    collection.putBatch(data)
+      .then(function(){
+        collection.fetch({
+          error: done,
+          success: function(){
+            expect( collection ).to.have.length( 10 );
+            done();
+          }
+        })
+      });
+  });
+
+  it('should merge models on a non-keyPath attribute', function (done) {
+    var Model = Backbone.IDBModel.extend({
+      idAttribute: 'local_id'
+    });
+
+    var DualCollection = Collection.extend({
+      model: Model,
+      keyPath: 'local_id',
+      indexes: [
+        {name: 'id', keyPath: 'id', unique: true}
+      ],
+    });
+
+    var collection = new DualCollection();
+    collection.putBatch([ { id: 1 }, { id: 2 }, { id: 3 } ])
+      .then( function() {
+        collection.putBatch(
+          [ { id: 1, foo: 'bar' }, { id: 2, foo: 'baz' } ],
+          { index: 'id' }
+        )
+        .then( function( records ) {
+          expect( records ).to.have.length( 2 );
+          _.each( records, function( record ){
+            expect( record.local_id ).to.not.be.undefined;
+          });
+
+          collection.fetch({
+            error: done,
+            success: function( collection ){
+              expect( collection ).to.have.length( 3 );
+              expect( collection.findWhere({ id: 1 }).get('foo')).equals('bar');
+              expect( collection.findWhere({ id: 2 }).get('foo')).equals('baz');
+              done();
+            }
+          })
+
+        });
+      });
+
+  });
 
   after(function( done ) {
     var indexedDB = window.indexedDB;

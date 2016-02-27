@@ -8,6 +8,8 @@ module.exports = bb.IDBCollection = bb.Collection.extend({
 
   model: IDBModel,
 
+  pageSize: 10,
+
   constructor: function(){
     var opts = {
       storeName     : this.name,
@@ -51,7 +53,7 @@ module.exports = bb.IDBCollection = bb.Collection.extend({
   /**
    *
    */
-  saveBatch: function( models, options ){
+  putBatch: function( models, options ){
     options = options || {};
     var self = this;
     if( _.isEmpty( models ) ){
@@ -62,13 +64,7 @@ module.exports = bb.IDBCollection = bb.Collection.extend({
     }
     return this.db.open()
       .then( function() {
-        return self.db.putBatch( models );
-      })
-      .then( function( resp ){
-        if( options.success ){
-          options.success( self, resp, options );
-        }
-        return resp;
+        return self.db.putBatch( models, options );
       });
   },
 

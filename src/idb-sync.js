@@ -11,16 +11,16 @@ module.exports = function(method, entity, options) {
       switch(method){
         case 'read':
           if( isModel ){
-            return entity.db.get( entity.id );
+            return entity.db.get( entity.id, options );
           }
-          return;
+          return entity.db.getAll( options );
         case 'create':
-          return entity.db.put( data );
+          return entity.db.put( data, options );
         case 'update':
-          return entity.db.put( data );
+          return entity.db.put( data, options );
         case 'delete':
           if( isModel ){
-            return entity.db.delete( entity.id );
+            return entity.db.delete( entity.id, options );
           }
           return;
       }
