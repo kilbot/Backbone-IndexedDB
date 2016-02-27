@@ -279,6 +279,41 @@ describe('Backbone IndexedDB', function () {
 
   });
 
+  it('should clear a collection', function (done) {
+    var collection = new Collection();
+    collection.putBatch([
+        {
+          firstname: 'Jane',
+          lastname: 'Smith',
+          age: 35,
+          email: 'janesmith@example.com'
+        }, {
+          firstname: 'John',
+          lastname: 'Doe',
+          age: 52,
+          email: 'johndoe@example.com'
+        }, {
+          firstname: 'Joe',
+          lastname: 'Bloggs',
+          age: 28,
+          email: 'joebloggs@example.com'
+        }
+      ])
+      .then( function( records ) {
+        collection.add(records);
+        expect( collection ).to.have.length( 3 );
+        collection.clear()
+          .then(function(){
+            expect( collection ).to.have.length( 0 );
+            collection.count()
+              .then(function(count){
+                expect( count ).equals( 0 );
+                done();
+              });
+          });
+      });
+  });
+
   after(function( done ) {
     var indexedDB = window.indexedDB;
     _.each( dbNameArray, function( dbName ){

@@ -137,10 +137,8 @@
 	    var self = this;
 	    return this.db.open()
 	      .then(function(){
-	        return self.db.clear();
-	      })
-	      .done(function(){
 	        self.reset();
+	        return self.db.clear();
 	      });
 	  },
 
@@ -197,28 +195,6 @@
 	      })
 	      .then( function(){
 	        self.remove( models );
-	        if( options.success ){
-	          options.success( self, models, options );
-	        }
-	        return models;
-	      });
-	  },
-
-	  /**
-	   *
-	   */
-	  mergeBatch: function( models, options ){
-	    options = options || {};
-	    var self = this;
-	    if( _.isEmpty( models ) ){
-	      return;
-	    }
-
-	    return this.db.open()
-	      .then( function() {
-	        return self.db.mergeBatch( models, options );
-	      })
-	      .then( function(){
 	        if( options.success ){
 	          options.success( self, models, options );
 	        }
@@ -430,7 +406,8 @@
 	  merge: function( data, options ){
 	    options = options || {};
 	    var self = this, objectStore = this.getObjectStore( consts.READ_WRITE );
-	    var keyPath = options.index || this.opts.keyPath;
+	    var keyPath = _.isString( options.index ) ? options.index :
+	      _.get( options, ['index', 'keyPath'], this.opts.keyPath );
 	    var key = data[keyPath];
 
 	    return new Promise(function (resolve, reject) {
@@ -438,8 +415,8 @@
 	      var request = objectStoreIndex.get( key );
 
 	      request.onsuccess = function (event) {
-	        var merged = _.merge( event.target.result, data );
-	        self.put( merged, { objectStore: objectStore } )
+	        var fn = _.isFunction( options.index.merge ) ? options.index.merge : _.merge ;
+	        self.put( fn( event.target.result, data ), { objectStore: objectStore } )
 	          .then( resolve );
 	      };
 
@@ -496,6 +473,24 @@
 
 	      request.onerror = function (event) {
 	        var err = new Error('getAll error');
+	        err.code = event.target.errorCode;
+	        reject(err);
+	      };
+	    });
+	  },
+
+	  clear: function(){
+	    var objectStore = this.getObjectStore( consts.READ_WRITE );
+
+	    return new Promise(function (resolve, reject) {
+	      var request = objectStore.clear();
+
+	      request.onsuccess = function (event) {
+	        resolve( event.target.result );
+	      };
+
+	      request.onerror = function (event) {
+	        var err = new Error('clear error');
 	        err.code = event.target.errorCode;
 	        reject(err);
 	      };

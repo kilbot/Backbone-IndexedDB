@@ -37,8 +37,7 @@ module.exports = function(grunt) {
           jquery: 'jQuery',
           lodash: '_',
           underscore: '_',
-          backbone: 'Backbone',
-          'idb-wrapper': 'IDBStore'
+          backbone: 'Backbone'
         },
         cache: true,
         watch: true

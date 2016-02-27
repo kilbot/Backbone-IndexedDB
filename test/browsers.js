@@ -1,5 +1,23 @@
 module.exports = {
   // Chrome
+  sl_chrome_31_osx_10_11: {
+    base: 'SauceLabs',
+    browserName: 'chrome',
+    platform: 'OS X 10.11',
+    version: '31'
+  },
+  sl_chrome_31_windows_10: {
+    base: 'SauceLabs',
+    browserName: 'chrome',
+    platform: 'Windows 10',
+    version: '31'
+  },
+  sl_chrome_31_linux: {
+    base: 'SauceLabs',
+    browserName: 'chrome',
+    platform: 'Linux',
+    version: '31'
+  },
   sl_chrome_47_osx_10_11: {
     base: 'SauceLabs',
     browserName: 'chrome',
@@ -20,6 +38,24 @@ module.exports = {
   },
 
   // Firefox
+  sl_firefox_31_osx_10_11: {
+    base: 'SauceLabs',
+    browserName: 'firefox',
+    platform: 'OS X 10.11',
+    version: '31.0'
+  },
+  sl_firefox_31_windows_10: {
+    base: 'SauceLabs',
+    browserName: 'firefox',
+    platform: 'Windows 10',
+    version: '31.0'
+  },
+  sl_firefox_31_linux: {
+    base: 'SauceLabs',
+    browserName: 'firefox',
+    platform: 'Linux',
+    version: '31.0'
+  },
   sl_firefox_43_osx_10_11: {
     base: 'SauceLabs',
     browserName: 'firefox',

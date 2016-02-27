@@ -32,10 +32,8 @@ module.exports = bb.IDBCollection = bb.Collection.extend({
     var self = this;
     return this.db.open()
       .then(function(){
-        return self.db.clear();
-      })
-      .done(function(){
         self.reset();
+        return self.db.clear();
       });
   },
 
@@ -92,28 +90,6 @@ module.exports = bb.IDBCollection = bb.Collection.extend({
       })
       .then( function(){
         self.remove( models );
-        if( options.success ){
-          options.success( self, models, options );
-        }
-        return models;
-      });
-  },
-
-  /**
-   *
-   */
-  mergeBatch: function( models, options ){
-    options = options || {};
-    var self = this;
-    if( _.isEmpty( models ) ){
-      return;
-    }
-
-    return this.db.open()
-      .then( function() {
-        return self.db.mergeBatch( models, options );
-      })
-      .then( function(){
         if( options.success ){
           options.success( self, models, options );
         }
