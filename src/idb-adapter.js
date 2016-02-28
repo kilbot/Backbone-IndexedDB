@@ -19,7 +19,8 @@ var defaults = {
   dbVersion     : 1,
   keyPath       : 'id',
   autoIncrement : true,
-  indexes       : []
+  indexes       : [],
+  pageSize      : 10
 };
 
 function IDBAdapter( options ){
@@ -50,8 +51,7 @@ IDBAdapter.prototype = {
         };
 
         request.onupgradeneeded = function (event) {
-          var store = event.currentTarget.result
-            .createObjectStore(self.opts.storeName, self.opts);
+          var store = event.currentTarget.result.createObjectStore(self.opts.storeName, self.opts);
 
           self.opts.indexes.forEach(function (index) {
             var unique = !!index.unique;
@@ -220,7 +220,7 @@ IDBAdapter.prototype = {
 
   getAll: function( options ){
     options = options || {};
-    var limit = options.limit || 10;
+    var limit = _.get( options, ['data', 'filter', 'limit'], this.opts.pageSize );
     var objectStore = this.getObjectStore( consts.READ_ONLY );
 
     // getAll fallback
@@ -245,7 +245,7 @@ IDBAdapter.prototype = {
 
   _getAll: function( options ){
     options = options || {};
-    var limit = options.limit || 10;
+    var limit = _.get( options, ['data', 'filter', 'limit'], this.opts.pageSize );
     var objectStore = this.getObjectStore( consts.READ_ONLY );
 
     return new Promise(function (resolve, reject) {

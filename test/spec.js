@@ -219,22 +219,70 @@ describe('Backbone IndexedDB', function () {
       });
   });
 
-  it('should fetch 10 records by default', function(done){
+  it('should fetch \'collection.pageSize\' records by default', function(done){
     for(var data = [], i = 0; i < 100; i++) {
       data.push({ foo: i });
     }
 
-    var collection = new Collection();
+    var Col = Collection.extend({
+      pageSize: Math.floor((Math.random() * 100) + 1)
+    });
+    var collection = new Col();
 
     collection.putBatch(data)
       .then(function(){
         collection.fetch({
+          special: true,
           error: done,
-          success: function(){
-            expect( collection ).to.have.length( 10 );
+          success: function(collection, response, options){
+            expect( collection ).to.have.length( collection.pageSize );
+            expect( options.special).to.be.true;
             done();
           }
         })
+      });
+  });
+
+  it('should fetch \'filter[limit]\' records', function(done){
+    for(var data = [], i = 0; i < 100; i++) {
+      data.push({ foo: i });
+    }
+
+    var Col = Collection.extend({
+      pageSize: Math.floor((Math.random() * 100) + 1)
+    });
+    var collection = new Col();
+
+    collection.putBatch(data)
+      .then(function(){
+        var random = Math.floor((Math.random() * 100) + 1);
+        collection.fetch({
+          data: {
+            filter: {
+              limit: random,
+            }
+          },
+          special: true,
+          error: done,
+          success: function(){
+            expect( collection ).to.have.length( random );
+
+            collection.fetch({
+              data: {
+                filter: {
+                  limit: -1,
+                }
+              },
+              reset: true,
+              error: done,
+              success: function(){
+                expect( collection ).to.have.length( 100 );
+                done();
+              }
+            });
+
+          }
+        });
       });
   });
 
@@ -275,6 +323,56 @@ describe('Backbone IndexedDB', function () {
           })
 
         });
+      });
+
+  });
+
+  it('should merge models with a custom merge function', function (done) {
+    var Model = Backbone.IDBModel.extend({
+      idAttribute: 'local_id'
+    });
+
+    var DualCollection = Collection.extend({
+      model: Model,
+      keyPath: 'local_id',
+      indexes: [
+        {name: 'id', keyPath: 'id', unique: true}
+      ],
+    });
+
+    var collection = new DualCollection();
+    collection.putBatch([ { id: 1 }, { id: 2 }, { id: 3 } ])
+      .then( function() {
+        collection.putBatch(
+            [ { id: 1, foo: 'bar' }, { id: 2, foo: 'baz' }, { id: 4, foo: 'boo' } ],
+            {
+              index: {
+                keyPath: 'id',
+                merge: function(oldData, newData){
+                  if( _.has(oldData, 'id') ){
+                    newData._state = 'updated';
+                  } else {
+                    newData._state = 'new';
+                  }
+                  return _.merge( oldData, newData );
+                }
+              }
+            }
+          )
+          .then( function() {
+            collection.fetch({
+              error: done,
+              success: function( collection ){
+                expect( collection ).to.have.length( 4 );
+                expect( collection.findWhere({ id: 1 }).get('_state') ).equals('updated');
+                expect( collection.findWhere({ id: 2 }).get('_state') ).equals('updated');
+                expect( collection.findWhere({ id: 3 }).get('_state') ).to.be.undefined;
+                expect( collection.findWhere({ id: 4 }).get('_state') ).equals('new');
+                done();
+              }
+            })
+
+          });
       });
 
   });

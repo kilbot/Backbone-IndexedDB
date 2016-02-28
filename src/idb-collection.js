@@ -8,8 +8,6 @@ module.exports = bb.IDBCollection = bb.Collection.extend({
 
   model: IDBModel,
 
-  pageSize: 10,
-
   constructor: function(){
     var opts = {
       storeName     : this.name,
@@ -17,7 +15,8 @@ module.exports = bb.IDBCollection = bb.Collection.extend({
       dbVersion     : this.dbVersion,
       keyPath       : this.keyPath,
       autoIncrement : this.autoIncrement,
-      indexes       : this.indexes
+      indexes       : this.indexes,
+      pageSize      : this.pageSize
     };
 
     this.db = new IDBAdapter(opts);
