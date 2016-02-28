@@ -118,7 +118,15 @@ IDBAdapter.prototype = {
     }
 
     return new Promise(function (resolve, reject) {
+
       var request = objectStore.put( data );
+
+      //// note: the keyPath check was included to fix a bug in Safari
+      //if( data[keyPath] ){
+      //  request = objectStore.put( data );
+      //} else {
+      //  request = objectStore.add( data );
+      //}
 
       request.onsuccess = function (event) {
         self.get( event.target.result, {
@@ -201,8 +209,8 @@ IDBAdapter.prototype = {
     var key = data[keyPath];
 
     return new Promise(function (resolve, reject) {
-      var objectStoreIndex = objectStore.index( keyPath );
-      var request = objectStoreIndex.get( key );
+      var openIndex = objectStore.index( keyPath );
+      var request = openIndex.get( key );
 
       request.onsuccess = function (event) {
         var fn = _.isFunction( options.index.merge ) ? options.index.merge : _.merge ;
@@ -246,6 +254,9 @@ IDBAdapter.prototype = {
   _getAll: function( options ){
     options = options || {};
     var limit = _.get( options, ['data', 'filter', 'limit'], this.opts.pageSize );
+    if( limit === -1 ){
+      limit = Infinity;
+    }
     var objectStore = this.getObjectStore( consts.READ_ONLY );
 
     return new Promise(function (resolve, reject) {

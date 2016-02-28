@@ -28,21 +28,18 @@ describe('Backbone IndexedDB', function () {
 
   it('should create a model', function (done) {
     var collection = new Collection();
-    var model = collection.add({
+    collection.create({
       firstname: 'John',
       lastname: 'Doe',
       age: 52,
       email: 'johndoe@example.com'
-    });
-
-    model.save({}, {
+    }, {
       special: true,
       error: done,
-      success: function(m, resp, opts) {
-        expect(m).to.eql(model);
-        expect(m.isNew()).to.be.false;
-        expect(resp.age).to.eql(52);
-        expect(opts.special).to.be.true;
+      success: function( model, response, options ) {
+        expect(model.isNew()).to.be.false;
+        expect(response.age).to.eql(52);
+        expect(options.special).to.be.true;
         done();
       }
     });
@@ -58,7 +55,7 @@ describe('Backbone IndexedDB', function () {
     }, {
       wait: true,
       error: done,
-      success: function( model ){
+      success: function( model, reposonse, options ){
         model.save({ age: 54 }, {
           special: true,
           error: done,
@@ -342,17 +339,18 @@ describe('Backbone IndexedDB', function () {
 
     var collection = new DualCollection();
     collection.putBatch([ { id: 1 }, { id: 2 }, { id: 3 } ])
-      .then( function() {
+      .then( function( records ) {
         collection.putBatch(
             [ { id: 1, foo: 'bar' }, { id: 2, foo: 'baz' }, { id: 4, foo: 'boo' } ],
             {
               index: {
                 keyPath: 'id',
                 merge: function(oldData, newData){
-                  if( _.has(oldData, 'id') ){
+                  if( _.has(oldData, 'local_id') ){
                     newData._state = 'updated';
                   } else {
                     newData._state = 'new';
+                    //newData.local_id = 4;
                   }
                   return _.merge( oldData, newData );
                 }
@@ -411,6 +409,15 @@ describe('Backbone IndexedDB', function () {
           });
       });
   });
+
+  //it('should autoIncrement the keyPath (Safari bug)', function (done) {
+  //  done();
+  //  //var collection = new Collection();
+  //  //collection.db.open()
+  //  //  .then(function(){
+  //  //    //collection.db.open();
+  //  //  });
+  //});
 
   after(function( done ) {
     var indexedDB = window.indexedDB;
