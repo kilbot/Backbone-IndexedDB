@@ -38,23 +38,23 @@ module.exports = {
   },
 
   // Firefox
-  sl_firefox_29_osx_10_11: {
+  sl_firefox_31_osx_10_11: {
     base: 'SauceLabs',
     browserName: 'firefox',
     platform: 'OS X 10.11',
-    version: '29.0'
+    version: '31.0'
   },
-  sl_firefox_29_windows_10: {
+  sl_firefox_31_windows_10: {
     base: 'SauceLabs',
     browserName: 'firefox',
     platform: 'Windows 10',
-    version: '29.0'
+    version: '31.0'
   },
-  sl_firefox_29_linux: {
+  sl_firefox_31_linux: {
     base: 'SauceLabs',
     browserName: 'firefox',
     platform: 'Linux',
-    version: '29.0'
+    version: '31.0'
   },
   sl_firefox_43_osx_10_11: {
     base: 'SauceLabs',

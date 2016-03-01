@@ -15,9 +15,9 @@ module.exports = function(method, entity, options) {
           }
           return entity.db.getAll( options );
         case 'create':
-          return entity.db.put( data, options );
+          return entity.db.create( data, options );
         case 'update':
-          return entity.db.put( data, options );
+          return entity.db.update( data, options );
         case 'delete':
           if( isModel ){
             return entity.db.delete( entity.id, options );
