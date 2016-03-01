@@ -263,9 +263,9 @@
 
 	          // hack for Safari
 	          if( is_safari ){
-	            return self.findHighestPrimaryKey()
+	            return self.findHighestIndex()
 	              .then(function (key) {
-	                self.highestKey = key;
+	                self.highestKey = key || 0;
 	                resolve(self.db);
 	              });
 	          }
@@ -301,20 +301,11 @@
 	  },
 
 	  getTransaction: function (access) {
-	    if(!this.txn || is_safari){
-	      this.txn = this.db.transaction([this.opts.storeName], access);
-	    }
-	    return this.txn;
-	    // transaction.oncomplete
-	    // transaction.onabort
-	    // transaction.onerror
+	    return this.db.transaction([this.opts.storeName], access);
 	  },
 
 	  getObjectStore: function (access) {
-	    if(!this.objectStore || is_safari){
-	      this.objectStore = this.getTransaction(access).objectStore(this.opts.storeName);
-	    }
-	    return this.objectStore;
+	    return this.getTransaction(access).objectStore(this.opts.storeName);
 	  },
 
 	  count: function (options) {
@@ -560,15 +551,21 @@
 	    });
 	  },
 
-	  findHighestPrimaryKey: function (options) {
+	  findHighestIndex: function (keyPath, options) {
 	    options = options || {};
 	    var self = this, objectStore = this.getObjectStore(consts.READ_ONLY);
 
 	    return new Promise(function (resolve, reject) {
-	      var request = objectStore.openCursor(null, consts.PREV);
+	      var request;
+	      if(keyPath){
+	        var openIndex = objectStore.index(keyPath);
+	        request = openIndex.openCursor(null, consts.PREV);
+	      } else {
+	        request = objectStore.openCursor(null, consts.PREV);
+	      }
 
 	      request.onsuccess = function (event) {
-	        resolve(event.target.result || 0);
+	        resolve(event.target.result.key);
 	      };
 
 	      request.onerror = function (event) {

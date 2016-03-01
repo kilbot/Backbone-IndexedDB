@@ -409,6 +409,41 @@ describe('Backbone IndexedDB', function () {
       });
   });
 
+  it('should get the highest entry by index', function (done) {
+    var IndexedCollection = Collection.extend({
+      indexes: [
+        {name: 'age', keyPath: 'age'}
+      ],
+    });
+    var collection = new IndexedCollection();
+
+    collection.putBatch([
+      {
+        firstname: 'Jane',
+        lastname: 'Smith',
+        age: 35,
+        email: 'janesmith@example.com'
+      }, {
+        firstname: 'John',
+        lastname: 'Doe',
+        age: 52,
+        email: 'johndoe@example.com'
+      }, {
+        firstname: 'Joe',
+        lastname: 'Bloggs',
+        age: 28,
+        email: 'joebloggs@example.com'
+      }
+    ])
+    .then(function(){
+      return collection.db.findHighestIndex('age');
+    })
+    .then(function(response){
+      expect(response).equals(52);
+      done();
+    });
+  });
+
   after(function( done ) {
     var indexedDB = window.indexedDB;
     _.each( dbNameArray, function( dbName ){
