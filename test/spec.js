@@ -350,7 +350,6 @@ describe('Backbone IndexedDB', function () {
                     newData._state = 'updated';
                   } else {
                     newData._state = 'new';
-                    //newData.local_id = 4;
                   }
                   return _.merge( oldData, newData );
                 }
@@ -409,15 +408,6 @@ describe('Backbone IndexedDB', function () {
           });
       });
   });
-
-  //it('should autoIncrement the keyPath (Safari bug)', function (done) {
-  //  done();
-  //  //var collection = new Collection();
-  //  //collection.db.open()
-  //  //  .then(function(){
-  //  //    //collection.db.open();
-  //  //  });
-  //});
 
   after(function( done ) {
     var indexedDB = window.indexedDB;

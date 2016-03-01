@@ -241,8 +241,8 @@
 
 	  constructor: IDBAdapter,
 
-	  open: function(){
-	    if( ! this._open ){
+	  open: function () {
+	    if (!this._open) {
 	      var self = this;
 
 	      this._open = new Promise(function (resolve, reject) {
@@ -250,7 +250,11 @@
 
 	        request.onsuccess = function (event) {
 	          self.db = event.target.result;
-	          resolve(self.db);
+	          self.findHighestPrimaryKey()
+	            .then(function (key) {
+	              self.highestKey = key;
+	              resolve(self.db);
+	            });
 	        };
 
 	        request.onerror = function (event) {
@@ -275,31 +279,31 @@
 	    return this._open;
 	  },
 
-	  close: function(){
+	  close: function () {
 	    this.db.close();
 	    this.db = undefined;
 	    this._open = undefined;
 	  },
 
-	  getTransaction: function( access ){
+	  getTransaction: function (access) {
 	    return this.db.transaction([this.opts.storeName], access);
 	    // transaction.oncomplete
 	    // transaction.onabort
 	    // transaction.onerror
 	  },
 
-	  getObjectStore: function( access ){
+	  getObjectStore: function (access) {
 	    return this.getTransaction(access).objectStore(this.opts.storeName);
 	  },
 
-	  count: function(){
-	    var objectStore = this.getObjectStore( consts.READ_ONLY );
+	  count: function () {
+	    var objectStore = this.getObjectStore(consts.READ_ONLY);
 
 	    return new Promise(function (resolve, reject) {
 	      var request = objectStore.count();
 
 	      request.onsuccess = function (event) {
-	        resolve( event.target.result );
+	        resolve(event.target.result);
 	      };
 
 	      request.onerror = function (event) {
@@ -310,39 +314,39 @@
 	    });
 	  },
 
-	  put: function( data, options ){
+	  put: function (data, options) {
 	    options = options || {};
-	    var self = this, objectStore;
-
-	    // merge on index keyPath
-	    if( options.index ){
-	      return this.merge( data, options );
-	    }
+	    var self = this, objectStore, keyPath = this.opts.keyPath;
 
 	    // continue an open transaction
-	    if( options.objectStore ){
+	    if (options.objectStore) {
 	      objectStore = options.objectStore;
 	    } else {
-	      objectStore = this.getObjectStore( consts.READ_WRITE );
+	      objectStore = this.getObjectStore(consts.READ_WRITE);
+	    }
+
+	    // merge on index keyPath
+	    if (options.index) {
+	      return this.merge(data, options);
 	    }
 
 	    return new Promise(function (resolve, reject) {
 
-	      var request = objectStore.put( data );
+	      // fix Safari keyGenerator bug: http://bl.ocks.org/kilbot/3a1f7adf04842806baa8
+	      if (!data[keyPath]) {
+	        return self.add(data, options)
+	          .then(resolve)
+	          .catch(reject);
+	      }
 
-	      //// note: the keyPath check was included to fix a bug in Safari
-	      //if( data[keyPath] ){
-	      //  request = objectStore.put( data );
-	      //} else {
-	      //  request = objectStore.add( data );
-	      //}
+	      var request = objectStore.put(data);
 
 	      request.onsuccess = function (event) {
-	        self.get( event.target.result, {
-	          objectStore: objectStore
-	        })
-	        .then( resolve )
-	        .catch( reject );
+	        self.get(event.target.result, {
+	            objectStore: objectStore
+	          })
+	          .then(resolve)
+	          .catch(reject);
 	      };
 
 	      request.onerror = function (event) {
@@ -353,22 +357,22 @@
 	    });
 	  },
 
-	  get: function( key, options ){
+	  get: function (key, options) {
 	    options = options || {};
 	    var objectStore;
 
 	    // continue an open transaction
-	    if( options.objectStore ){
+	    if (options.objectStore) {
 	      objectStore = options.objectStore;
 	    } else {
-	      objectStore = this.getObjectStore( consts.READ_ONLY );
+	      objectStore = this.getObjectStore(consts.READ_ONLY);
 	    }
 
 	    return new Promise(function (resolve, reject) {
-	      var request = objectStore.get( key );
+	      var request = objectStore.get(key);
 
 	      request.onsuccess = function (event) {
-	        resolve( event.target.result );
+	        resolve(event.target.result);
 	      };
 
 	      request.onerror = function (event) {
@@ -379,15 +383,15 @@
 	    });
 	  },
 
-	  delete: function( key, options ){
+	  delete: function (key, options) {
 	    options = options || {};
-	    var objectStore = this.getObjectStore( consts.READ_WRITE );
+	    var objectStore = this.getObjectStore(consts.READ_WRITE);
 
 	    return new Promise(function (resolve, reject) {
-	      var request = objectStore.delete( key );
+	      var request = objectStore.delete(key);
 
 	      request.onsuccess = function (event) {
-	        resolve( event.target.result ); // undefined
+	        resolve(event.target.result); // undefined
 	      };
 
 	      request.onerror = function (event) {
@@ -398,33 +402,34 @@
 	    });
 	  },
 
-	  putBatch: function( dataArray, options ){
+	  putBatch: function (dataArray, options) {
 	    options = options || {};
-	    options.objectStore = this.getObjectStore( consts.READ_WRITE );
+	    options.objectStore = this.getObjectStore(consts.READ_WRITE);
 	    var batch = [];
 
-	    _.each( dataArray, function(data){
-	      batch.push( this.put(data, options) );
+	    _.each(dataArray, function (data) {
+	      batch.push(this.put(data, options));
 	    }.bind(this));
 
 	    return Promise.all(batch);
 	  },
 
-	  merge: function( data, options ){
+	  merge: function (data, options) {
 	    options = options || {};
-	    var self = this, objectStore = this.getObjectStore( consts.READ_WRITE );
-	    var keyPath = _.isString( options.index ) ? options.index :
-	      _.get( options, ['index', 'keyPath'], this.opts.keyPath );
+	    var self = this, objectStore = options.objectStore;
+	    var keyPath = _.isString(options.index) ? options.index :
+	      _.get(options, ['index', 'keyPath'], this.opts.keyPath);
 	    var key = data[keyPath];
 
 	    return new Promise(function (resolve, reject) {
-	      var openIndex = objectStore.index( keyPath );
-	      var request = openIndex.get( key );
+	      var openIndex = objectStore.index(keyPath);
+	      var request = openIndex.get(key);
 
 	      request.onsuccess = function (event) {
-	        var fn = _.isFunction( options.index.merge ) ? options.index.merge : _.merge ;
-	        self.put( fn( event.target.result, data ), { objectStore: objectStore } )
-	          .then( resolve );
+	        var orig = _.clone(event.target.result);
+	        var fn = _.isFunction(options.index.merge) ? options.index.merge : _.merge;
+	        self.put(fn(orig, data), {objectStore: objectStore})
+	          .then(resolve);
 	      };
 
 	      request.onerror = function (event) {
@@ -435,21 +440,21 @@
 	    });
 	  },
 
-	  getAll: function( options ){
+	  getAll: function (options) {
 	    options = options || {};
-	    var limit = _.get( options, ['data', 'filter', 'limit'], this.opts.pageSize );
-	    var objectStore = this.getObjectStore( consts.READ_ONLY );
+	    var limit = _.get(options, ['data', 'filter', 'limit'], this.opts.pageSize);
+	    var objectStore = this.getObjectStore(consts.READ_ONLY);
 
 	    // getAll fallback
-	    if( objectStore.getAll === undefined ){
-	      return this._getAll( options );
+	    if (objectStore.getAll === undefined) {
+	      return this._getAll(options);
 	    }
 
 	    return new Promise(function (resolve, reject) {
 	      var request = objectStore.getAll(null, limit);
 
 	      request.onsuccess = function (event) {
-	        resolve( event.target.result );
+	        resolve(event.target.result);
 	      };
 
 	      request.onerror = function (event) {
@@ -460,13 +465,13 @@
 	    });
 	  },
 
-	  _getAll: function( options ){
+	  _getAll: function (options) {
 	    options = options || {};
-	    var limit = _.get( options, ['data', 'filter', 'limit'], this.opts.pageSize );
-	    if( limit === -1 ){
+	    var limit = _.get(options, ['data', 'filter', 'limit'], this.opts.pageSize);
+	    if (limit === -1) {
 	      limit = Infinity;
 	    }
-	    var objectStore = this.getObjectStore( consts.READ_ONLY );
+	    var objectStore = this.getObjectStore(consts.READ_ONLY);
 
 	    return new Promise(function (resolve, reject) {
 	      var request = objectStore.openCursor();
@@ -474,11 +479,11 @@
 
 	      request.onsuccess = function (event) {
 	        var cursor = event.target.result;
-	        if( cursor && records.length < limit ){
-	          records.push( cursor.value );
+	        if (cursor && records.length < limit) {
+	          records.push(cursor.value);
 	          return cursor.continue();
 	        }
-	        resolve( records );
+	        resolve(records);
 	      };
 
 	      request.onerror = function (event) {
@@ -489,18 +494,68 @@
 	    });
 	  },
 
-	  clear: function(){
-	    var objectStore = this.getObjectStore( consts.READ_WRITE );
+	  clear: function () {
+	    var objectStore = this.getObjectStore(consts.READ_WRITE);
 
 	    return new Promise(function (resolve, reject) {
 	      var request = objectStore.clear();
 
 	      request.onsuccess = function (event) {
-	        resolve( event.target.result );
+	        resolve(event.target.result);
 	      };
 
 	      request.onerror = function (event) {
 	        var err = new Error('clear error');
+	        err.code = event.target.errorCode;
+	        reject(err);
+	      };
+	    });
+	  },
+
+	  add: function(data, options){
+	    options = options || {};
+	    var self = this, objectStore, keyPath = this.opts.keyPath;
+
+	    data[keyPath] = ++this.highestKey;
+
+	    // continue an open transaction
+	    if (options.objectStore) {
+	      objectStore = options.objectStore;
+	    } else {
+	      objectStore = this.getObjectStore(consts.READ_WRITE);
+	    }
+
+	    return new Promise(function (resolve, reject) {
+	      var request = objectStore.add(data);
+
+	      request.onsuccess = function (event) {
+	        self.get(event.target.result, {
+	            objectStore: objectStore
+	          })
+	          .then(resolve)
+	          .catch(reject);
+	      };
+
+	      request.onerror = function (event) {
+	        var err = new Error('add error');
+	        err.code = event.target.errorCode;
+	        reject(err);
+	      };
+	    });
+	  },
+
+	  findHighestPrimaryKey: function () {
+	    var objectStore = this.getObjectStore(consts.READ_ONLY);
+
+	    return new Promise(function (resolve, reject) {
+	      var request = objectStore.openCursor(null, consts.PREV);
+
+	      request.onsuccess = function (event) {
+	        resolve(event.target.result || 0);
+	      };
+
+	      request.onerror = function (event) {
+	        var err = new Error('find highest key error');
 	        err.code = event.target.errorCode;
 	        reject(err);
 	      };
