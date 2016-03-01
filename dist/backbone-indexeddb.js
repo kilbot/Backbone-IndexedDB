@@ -208,9 +208,9 @@
 /***/ function(module, exports, __webpack_require__) {
 
 	var _ = __webpack_require__(5);
-	var is_safari = navigator.userAgent.indexOf('Safari') != -1
-	  && navigator.userAgent.indexOf('Chrome') == -1
-	  &&  navigator.userAgent.indexOf('Android') == -1;
+	var is_safari = navigator.userAgent.indexOf('Safari') !== -1 &&
+	  navigator.userAgent.indexOf('Chrome') === -1 &&
+	  navigator.userAgent.indexOf('Android') === -1;
 
 	var indexedDB = window.indexedDB;
 	var Promise = window.Promise;
@@ -317,7 +317,8 @@
 	    return this.objectStore;
 	  },
 
-	  count: function () {
+	  count: function (options) {
+	    options = options || {};
 	    var self = this, objectStore = this.getObjectStore(consts.READ_ONLY);
 
 	    return new Promise(function (resolve, reject) {

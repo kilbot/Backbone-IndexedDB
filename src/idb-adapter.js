@@ -1,7 +1,7 @@
 var _ = require('lodash');
-var is_safari = navigator.userAgent.indexOf('Safari') != -1
-  && navigator.userAgent.indexOf('Chrome') == -1
-  &&  navigator.userAgent.indexOf('Android') == -1;
+var is_safari = navigator.userAgent.indexOf('Safari') !== -1 &&
+  navigator.userAgent.indexOf('Chrome') === -1 &&
+  navigator.userAgent.indexOf('Android') === -1;
 
 var indexedDB = window.indexedDB;
 var Promise = window.Promise;
@@ -108,7 +108,8 @@ IDBAdapter.prototype = {
     return this.objectStore;
   },
 
-  count: function () {
+  count: function (options) {
+    options = options || {};
     var self = this, objectStore = this.getObjectStore(consts.READ_ONLY);
 
     return new Promise(function (resolve, reject) {
