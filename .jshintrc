@@ -3,16 +3,14 @@
     "require" : true,
     "module"  : true,
     "exports" : true,
-    "global"  : true
+    "global"  : true,
+    "Promise" : true
   },
-
-  "predef": ["-Promise"],
 
   "bitwise"       : false,
   "camelcase"     : false,
   "curly"         : true,
   "eqeqeq"        : true,
-  "esversion"     : 6,
   "forin"         : true,
   "immed"         : true,
   "indent"        : 2,

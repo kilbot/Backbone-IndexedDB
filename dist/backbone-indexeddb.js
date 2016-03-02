@@ -213,7 +213,6 @@
 	  navigator.userAgent.indexOf('Android') === -1;
 
 	var indexedDB = window.indexedDB;
-	var Promise = window.Promise;
 
 	var consts = {
 	  'READ_ONLY'         : 'readonly',
@@ -447,7 +446,10 @@
 
 	  merge: function (data, options) {
 	    options = options || {};
-	    var self = this, keyPath = options.index, fn = _.merge;
+	    var self = this, keyPath = options.index,
+	        fn = function(result, data){
+	          return _.merge({}, result, data); // waiting for lodash 4
+	        };
 
 	    if(_.isObject(options.index)){
 	      keyPath = _.get(options, ['index', 'keyPath'], this.opts.keyPath);
@@ -565,7 +567,8 @@
 	      }
 
 	      request.onsuccess = function (event) {
-	        resolve(event.target.result.key);
+	        var value = _.get(event, ['target', 'result', 'key']);
+	        resolve(value);
 	      };
 
 	      request.onerror = function (event) {
