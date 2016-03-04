@@ -2,6 +2,11 @@ describe('Backbone IndexedDB', function () {
   var dbNameArray = [];
   var Collection;
 
+  // is_safari worse than IE
+  var is_safari = window.navigator.userAgent.indexOf('Safari') !== -1 &&
+    window.navigator.userAgent.indexOf('Chrome') === -1 &&
+    window.navigator.userAgent.indexOf('Android') === -1;
+
   beforeEach(function(){
     var storePrefix = 'Test-';
     var name = Date.now().toString();
@@ -160,31 +165,28 @@ describe('Backbone IndexedDB', function () {
   it('should batch save a collection of models', function (done) {
     var collection = new Collection();
     collection.putBatch([
-      {
-        firstname: 'Jane',
-        lastname: 'Smith',
-        age: 35,
-        email: 'janesmith@example.com'
-      }, {
-        firstname: 'John',
-        lastname: 'Doe',
-        age: 52,
-        email: 'johndoe@example.com'
-      }, {
-        firstname: 'Joe',
-        lastname: 'Bloggs',
-        age: 28,
-        email: 'joebloggs@example.com'
-      }
-    ])
-    .then( function( records ) {
-      expect( collection ).to.have.length( 0 );
-      expect( records ).to.have.length( 3 );
-      _.each( records, function( record ){
-        expect( record.id ).to.not.be.undefined;
+        {
+          firstname: 'Jane',
+          lastname : 'Smith',
+          age      : 35,
+          email    : 'janesmith@example.com'
+        }, {
+          firstname: 'John',
+          lastname : 'Doe',
+          age      : 52,
+          email    : 'johndoe@example.com'
+        }, {
+          firstname: 'Joe',
+          lastname : 'Bloggs',
+          age      : 28,
+          email    : 'joebloggs@example.com'
+        }
+      ])
+      .then(function (records) {
+        expect(collection).to.have.length(0);
+        expect(records).eqls([1, 2, 3]);
+        done();
       });
-      done();
-    });
   });
 
   it('should count indexeddb records', function (done) {
@@ -289,7 +291,7 @@ describe('Backbone IndexedDB', function () {
     });
 
     var DualCollection = Collection.extend({
-      model: Model,
+      model  : Model,
       keyPath: 'local_id',
       indexes: [
         {name: 'id', keyPath: 'id', unique: true}
@@ -297,30 +299,28 @@ describe('Backbone IndexedDB', function () {
     });
 
     var collection = new DualCollection();
-    collection.putBatch([ { id: 1 }, { id: 2 }, { id: 3 } ])
-      .then( function() {
-        collection.putBatch(
-          [ { id: 1, foo: 'bar' }, { id: 2, foo: 'baz' } ],
-          { index: 'id' }
-        )
-        .then( function( records ) {
-          expect( records ).to.have.length( 2 );
-          _.each( records, function( record ){
-            expect( record.local_id ).to.not.be.undefined;
-          });
+    collection.putBatch([{id: 266}, {id: 8345}, {id: 2346}])
+      .then(function () {
+        return collection.putBatch(
+          [{id: 266, foo: 'bar'}, {id: 8345, foo: 'baz'}],
+          {index: 'id'}
+        );
+      })
+      .then(function (records) {
+        expect(records).eqls([1, 2]);
 
-          collection.fetch({
-            error: done,
-            success: function( collection ){
-              expect( collection ).to.have.length( 3 );
-              expect( collection.findWhere({ id: 1 }).get('foo')).equals('bar');
-              expect( collection.findWhere({ id: 2 }).get('foo')).equals('baz');
-              done();
-            }
-          })
+        collection.fetch({
+          error  : done,
+          success: function (collection) {
+            expect(collection).to.have.length(3);
+            expect(collection.findWhere({id: 266}).get('foo')).equals('bar');
+            expect(collection.findWhere({id: 8345}).get('foo')).equals('baz');
+            done();
+          }
+        })
 
-        });
-      });
+      })
+      .catch(done);
 
   });
 
@@ -338,39 +338,40 @@ describe('Backbone IndexedDB', function () {
     });
 
     var collection = new DualCollection();
-    collection.putBatch([ { id: 1 }, { id: 2 }, { id: 3 } ])
+    collection.putBatch([ { id: 11 }, { id: 12 }, { id: 13 } ])
       .then( function( records ) {
-        collection.putBatch(
-            [ { id: 1, foo: 'bar' }, { id: 2, foo: 'baz' }, { id: 4, foo: 'boo' } ],
-            {
-              index: {
-                keyPath: 'id',
-                merge: function(oldData, newData){
-                  if( _.has(oldData, 'local_id') ){
-                    newData._state = 'updated';
-                  } else {
-                    newData._state = 'new';
-                  }
-                  return _.merge( {}, oldData, newData );
+        return collection.putBatch(
+          [{id: 11, foo: 'bar'}, {id: 12, foo: 'baz'}, {id: 14, foo: 'boo'}],
+          {
+            index: {
+              keyPath: 'id',
+              merge  : function (oldData, newData) {
+                if (_.has(oldData, 'local_id')) {
+                  newData._state = 'updated';
+                } else {
+                  newData._state = 'new';
                 }
+                return _.merge({}, oldData, newData);
               }
             }
-          )
-          .then( function() {
-            collection.fetch({
-              error: done,
-              success: function( collection ){
-                expect( collection ).to.have.length( 4 );
-                expect( collection.findWhere({ id: 1 }).get('_state') ).equals('updated');
-                expect( collection.findWhere({ id: 2 }).get('_state') ).equals('updated');
-                expect( collection.findWhere({ id: 3 }).get('_state') ).to.be.undefined;
-                expect( collection.findWhere({ id: 4 }).get('_state') ).equals('new');
-                done();
-              }
-            })
+          }
+        );
+      })
+      .then( function() {
+        collection.fetch({
+          error: done,
+          success: function( collection ){
+            expect( collection ).to.have.length( 4 );
+            expect( collection.findWhere({ id: 11 }).get('_state') ).equals('updated');
+            expect( collection.findWhere({ id: 12 }).get('_state') ).equals('updated');
+            expect( collection.findWhere({ id: 13 }).get('_state') ).to.be.undefined;
+            expect( collection.findWhere({ id: 14 }).get('_state') ).equals('new');
+            done();
+          }
+        })
 
-          });
-      });
+      })
+      .catch(done);
 
   });
 
@@ -442,6 +443,115 @@ describe('Backbone IndexedDB', function () {
       expect(response).equals(52);
       done();
     });
+  });
+
+  it('should count the records on open', function(done){
+    var random = Math.floor((Math.random() * 100) + 1);
+    for(var data = [], i = 0; i < random; i++) {
+      data.push({ foo: i });
+    }
+
+    var collection = new Collection();
+
+    collection.putBatch(data)
+      .then(function() {
+        expect(collection.db.length).equals(0);
+        collection.db.close();
+        return collection.db.open();
+      })
+      .then(function () {
+        expect(collection.db.length).equals(random);
+        return collection.clear()
+      })
+      .then(function () {
+        expect(collection.db.length).equals(0);
+        done();
+      });
+  });
+
+  /**
+   * Unit testing is not good for benchmarking
+   * eg: an open console will slow indexedDB dramatically
+   * this is just a rough comparison
+   *
+   * 10000 records
+   */
+  it('should be performant with putBatch', function(done) {
+    var collection = new Collection();
+
+    var count = is_safari ? 2000 : 10000;
+
+    for(var data = [], i = 0; i < count; i++) {
+      data.push({ foo: i });
+    }
+    this.timeout(10000);
+
+    var start = Date.now();
+
+    collection.putBatch(data)
+      .then(function() {
+        var time = Date.now() - start;
+        expect(time).to.be.below(2000);
+        console.log(time);
+        done();
+      })
+      .catch(done);
+  });
+
+  /**
+   * 1000 records
+   */
+  it('should be performant with putBatch merge', function(done) {
+    var Model = Backbone.IDBModel.extend({
+      idAttribute: 'local_id'
+    });
+
+    var DualCollection = Collection.extend({
+      model  : Model,
+      keyPath: 'local_id',
+      indexes: [
+        {name: 'id', keyPath: 'id', unique: true}
+      ],
+    });
+
+    var count = is_safari ? 200 : 1000;
+
+    for(var data = [], i = 0; i < count; i++) {
+      data.push({ id: i });
+    }
+    this.timeout(10000);
+
+    var start = Date.now();
+
+    var collection = new DualCollection();
+    collection.putBatch(data)
+      .then(function () {
+        return collection.putBatch(data, {index: 'id'});
+      })
+      .then(function () {
+        var time = Date.now() - start;
+        expect(time).to.be.below(2000);
+        console.log(time);
+        done();
+      })
+      .catch(done);
+  });
+
+
+
+  describe('IDBAdapter', function(){
+
+    it('should have a hasGetParams method', function(){
+      var collection = new Collection();
+      expect(collection.db).respondsTo('hasGetParams');
+      expect(collection.db.hasGetParams()).to.be.false;
+      expect(collection.db.hasGetParams({page: 2})).to.be.true;
+      expect(collection.db.hasGetParams({fields: ['id', '_state']})).to.be.true;
+      expect(collection.db.hasGetParams({filter: {limit: -1}})).to.be.false;
+      expect(collection.db.hasGetParams({filter: {limit: -1, in: [1,2,3]}})).to.be.true;
+      expect(collection.db.hasGetParams({filter: {in: [1,2,3]}})).to.be.true;
+    });
+
   });
 
   after(function( done ) {

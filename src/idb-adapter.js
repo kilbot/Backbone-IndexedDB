@@ -1,7 +1,8 @@
+/* jshint -W071, -W074 */
 var _ = require('lodash');
-var is_safari = navigator.userAgent.indexOf('Safari') !== -1 &&
-  navigator.userAgent.indexOf('Chrome') === -1 &&
-  navigator.userAgent.indexOf('Android') === -1;
+var is_safari = window.navigator.userAgent.indexOf('Safari') !== -1 &&
+  window.navigator.userAgent.indexOf('Chrome') === -1 &&
+  window.navigator.userAgent.indexOf('Android') === -1;
 
 var indexedDB = window.indexedDB;
 
@@ -51,16 +52,19 @@ IDBAdapter.prototype = {
         request.onsuccess = function (event) {
           self.db = event.target.result;
 
-          // hack for Safari
-          if( is_safari ){
-            return self.findHighestIndex()
-              .then(function (key) {
+          // get count & safari hack
+          self.count()
+            .then(function () {
+              if(is_safari){
+                return self.findHighestIndex();
+              }
+            })
+            .then(function (key) {
+              if(is_safari){
                 self.highestKey = key || 0;
-                resolve(self.db);
-              });
-          }
-
-          resolve(self.db);
+              }
+              resolve(self.db);
+            });
         };
 
         request.onerror = function (event) {
@@ -72,9 +76,8 @@ IDBAdapter.prototype = {
           var store = event.currentTarget.result.createObjectStore(self.opts.storeName, self.opts);
 
           self.opts.indexes.forEach(function (index) {
-            var unique = !!index.unique;
             store.createIndex(index.name, index.keyPath, {
-              unique: unique
+              unique: index.unique
             });
           });
         };
@@ -100,12 +103,13 @@ IDBAdapter.prototype = {
 
   count: function (options) {
     options = options || {};
-    var self = this, objectStore = this.getObjectStore(consts.READ_ONLY);
+    var self = this, objectStore = options.objectStore || this.getObjectStore(consts.READ_ONLY);
 
     return new Promise(function (resolve, reject) {
       var request = objectStore.count();
 
       request.onsuccess = function (event) {
+        self.length = event.target.result || 0;
         resolve(event.target.result);
       };
 
@@ -116,26 +120,10 @@ IDBAdapter.prototype = {
     });
   },
 
-  create: function(data, options){
-    var self = this;
-    return this.add(data, options)
-      .then(function(key){
-        return self.get(key, options);
-      });
-  },
-
-  update: function(data, options){
-    var self = this;
-    return this.put(data, options)
-      .then(function(key){
-        return self.get(key, options);
-      });
-  },
-
   put: function (data, options) {
     options = options || {};
+    var objectStore = options.objectStore || this.getObjectStore(consts.READ_WRITE);
     var self = this, keyPath = this.opts.keyPath;
-    var objectStore = this.getObjectStore(consts.READ_WRITE);
 
     // merge on index keyPath
     if (options.index) {
@@ -162,8 +150,8 @@ IDBAdapter.prototype = {
 
   add: function(data, options){
     options = options || {};
+    var objectStore = options.objectStore || this.getObjectStore(consts.READ_WRITE);
     var self = this, keyPath = this.opts.keyPath;
-    var objectStore = this.getObjectStore(consts.READ_WRITE);
 
     if(is_safari){
       data[keyPath] = ++this.highestKey;
@@ -185,7 +173,7 @@ IDBAdapter.prototype = {
 
   get: function (key, options) {
     options = options || {};
-    var self = this, objectStore = this.getObjectStore(consts.READ_ONLY);
+    var self = this, objectStore = options.objectStore || this.getObjectStore(consts.READ_ONLY);
 
     return new Promise(function (resolve, reject) {
       var request = objectStore.get(key);
@@ -203,7 +191,7 @@ IDBAdapter.prototype = {
 
   delete: function (key, options) {
     options = options || {};
-    var self = this, objectStore = this.getObjectStore(consts.READ_WRITE);
+    var self = this, objectStore = options.objectStore || this.getObjectStore(consts.READ_WRITE);
 
     return new Promise(function (resolve, reject) {
       var request = objectStore.delete(key);
@@ -226,21 +214,25 @@ IDBAdapter.prototype = {
 
   putBatch: function (dataArray, options) {
     options = options || {};
+    options.objectStore = options.objectStore || this.getObjectStore(consts.READ_WRITE);
     var batch = [];
 
     _.each(dataArray, function (data) {
-      batch.push(this.update(data, options));
+      batch.push(this.put(data, options));
     }.bind(this));
 
     return Promise.all(batch);
   },
 
+  /**
+   * 4/3/2016: Chrome can do a fast merge on one transaction, but other browsers can't
+   */
   merge: function (data, options) {
     options = options || {};
-    var self = this, keyPath = options.index,
-        fn = function(result, data){
-          return _.merge({}, result, data); // waiting for lodash 4
-        };
+    var self = this, keyPath = options.index;
+    var fn = function(result, data){
+      return _.merge({}, result, data); // waiting for lodash 4
+    };
 
     if(_.isObject(options.index)){
       keyPath = _.get(options, ['index', 'keyPath'], this.opts.keyPath);
@@ -257,10 +249,10 @@ IDBAdapter.prototype = {
 
   getByIndex: function(keyPath, key, options){
     options = options || {};
-    var self = this;
-    var objectStore = this.getObjectStore(consts.READ_ONLY);
-    var openIndex = objectStore.index(keyPath);
-    var request = openIndex.get(key);
+    var objectStore = options.objectStore || this.getObjectStore(consts.READ_ONLY),
+        openIndex = objectStore.index(keyPath),
+        request = openIndex.get(key),
+        self = this;
 
     return new Promise(function (resolve, reject) {
       request.onsuccess = function (event) {
@@ -274,15 +266,20 @@ IDBAdapter.prototype = {
     });
   },
 
-  getAll: function (options) {
+  getBatch: function (options) {
     options = options || {};
-    var self = this;
-    var limit = _.get(options, ['data', 'filter', 'limit'], this.opts.pageSize);
-    var objectStore = this.getObjectStore(consts.READ_ONLY);
+    var self = this, objectStore = options.objectStore || this.getObjectStore(consts.READ_ONLY);
 
-    // getAll fallback
-    if (objectStore.getAll === undefined) {
-      return this._getAll(objectStore, limit, options);
+    if (objectStore.getAll === undefined || this.hasGetParams(options)) {
+      if(!options.objectStore){
+        options.objectStore = objectStore;
+      }
+      return this.getAll(options);
+    }
+
+    var limit = _.get(options, ['filter', 'limit'], this.opts.pageSize);
+    if (limit === -1) {
+      limit = null; // firefox doesn't like -1 or Infinity
     }
 
     return new Promise(function (resolve, reject) {
@@ -299,9 +296,14 @@ IDBAdapter.prototype = {
     });
   },
 
-  _getAll: function (objectStore, limit, options) {
+  getAll: function (options) {
     options = options || {};
-    var self = this;
+    var objectStore = options.objectStore || this.getObjectStore(consts.READ_ONLY),
+        limit = _.get(options, ['filter', 'limit'], this.opts.pageSize),
+        include = _.get(options, ['filter', 'in']),
+        keyPath = this.opts.keyPath,
+        self = this;
+
     if (limit === -1) {
       limit = Infinity;
     }
@@ -313,7 +315,9 @@ IDBAdapter.prototype = {
       request.onsuccess = function (event) {
         var cursor = event.target.result;
         if (cursor && records.length < limit) {
-          records.push(cursor.value);
+          if(!include || include.indexOf(cursor.value[keyPath]) !== -1){
+            records.push(cursor.value);
+          }
           return cursor.continue();
         }
         resolve(records);
@@ -328,12 +332,13 @@ IDBAdapter.prototype = {
 
   clear: function (options) {
     options = options || {};
-    var self = this, objectStore = this.getObjectStore(consts.READ_WRITE);
+    var self = this, objectStore = options.objectStore || this.getObjectStore(consts.READ_WRITE);
 
     return new Promise(function (resolve, reject) {
       var request = objectStore.clear();
 
       request.onsuccess = function (event) {
+        self.length = 0;
         resolve(event.target.result);
       };
 
@@ -346,7 +351,7 @@ IDBAdapter.prototype = {
 
   findHighestIndex: function (keyPath, options) {
     options = options || {};
-    var self = this, objectStore = this.getObjectStore(consts.READ_ONLY);
+    var self = this, objectStore = options.objectStore || this.getObjectStore(consts.READ_ONLY);
 
     return new Promise(function (resolve, reject) {
       var request;
@@ -367,8 +372,30 @@ IDBAdapter.prototype = {
         self.opts.onerror(options);
       };
     });
+  },
+
+  /**
+   * data: {
+   *  filter: {
+   *    limit: -1,
+   *    offset: 10,
+   *    q: 'term'
+   *    ...
+   *  },
+   *  fields: ['id', '_state'],
+   *  page: 2
+   * }
+   */
+  hasGetParams: function(options){
+    options = options || {};
+    if(options.page || options.fields || _.size(options.filter) > 1 ||
+      (_.size(options.filter) === 1 && options.filter.limit === undefined)){
+      return true;
+    }
+    return false;
   }
 
 };
 
 module.exports = IDBAdapter;
+/* jshint +W071, +W074 */

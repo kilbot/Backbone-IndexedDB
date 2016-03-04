@@ -33,7 +33,17 @@ module.exports = function (config) {
       },
     },
     captureTimeout: 120000,
-    customLaunchers: customLaunchers
+    customLaunchers: customLaunchers,
+
+    /**
+     * mocha settings don't work :(
+     */
+    client: {
+      mocha: {
+        reporter: 'html',
+        slow: 0
+      }
+    }
 };
 
   if (process.env.TRAVIS) {
