@@ -469,6 +469,50 @@ describe('Backbone IndexedDB', function () {
       });
   });
 
+  it('should have a getBatch convenience function', function(done){
+    var IndexedCollection = Collection.extend({
+      indexes: [
+        {name: 'age', keyPath: 'age'}
+      ],
+    });
+    var collection = new IndexedCollection();
+
+    var data = [
+      {
+        firstname: 'Jane',
+        lastname: 'Smith',
+        age: 35,
+        email: 'janesmith@example.com'
+      }, {
+        firstname: 'John',
+        lastname: 'Doe',
+        age: 52,
+        email: 'johndoe@example.com'
+      }, {
+        firstname: 'Joe',
+        lastname: 'Bloggs',
+        age: 28,
+        email: 'joebloggs@example.com'
+      }
+    ];
+
+    collection.putBatch(data)
+      .then(function(local_ids){
+        return collection.getBatch(local_ids);
+      })
+      .then(function(response){
+        expect(response).to.have.length(3);
+      })
+      .then(function(){
+        return collection.getBatch([35, 28], {index: 'age'});
+      })
+      .then(function(response){
+        expect(response).to.have.length(2);
+        done();
+      })
+      .catch(done);
+  });
+
   /**
    * Unit testing is not good for benchmarking
    * eg: an open console will slow indexedDB dramatically

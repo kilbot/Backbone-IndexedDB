@@ -118,29 +118,29 @@
 
 	  model: IDBModel,
 
-	  constructor: function(){
+	  constructor: function () {
 	    var opts = {
-	      storeName     : this.name,
-	      storePrefix   : this.storePrefix,
-	      dbVersion     : this.dbVersion,
-	      keyPath       : this.keyPath,
-	      autoIncrement : this.autoIncrement,
-	      indexes       : this.indexes,
-	      pageSize      : this.pageSize
+	      storeName    : this.name,
+	      storePrefix  : this.storePrefix,
+	      dbVersion    : this.dbVersion,
+	      keyPath      : this.keyPath,
+	      autoIncrement: this.autoIncrement,
+	      indexes      : this.indexes,
+	      pageSize     : this.pageSize
 	    };
 
 	    this.db = new IDBAdapter(opts);
 
-	    bb.Collection.apply( this, arguments );
+	    bb.Collection.apply(this, arguments);
 	  },
 
 	  /**
 	   * Clears the IDB storage and resets the collection
 	   */
-	  clear: function(){
+	  clear: function () {
 	    var self = this;
 	    return this.db.open()
-	      .then(function(){
+	      .then(function () {
 	        self.reset();
 	        return self.db.clear();
 	      });
@@ -149,10 +149,10 @@
 	  /**
 	   *
 	   */
-	  count: function(){
+	  count: function () {
 	    var self = this;
 	    return this.db.open()
-	      .then(function(){
+	      .then(function () {
 	        return self.db.count();
 	      });
 	  },
@@ -160,26 +160,48 @@
 	  /**
 	   *
 	   */
-	  putBatch: function( models, options ){
+	  putBatch: function (models, options) {
 	    options = options || {};
 	    var self = this;
-	    if( _.isEmpty( models ) ){
+	    if (_.isEmpty(models)) {
 	      models = this.getChangedModels();
 	    }
-	    if( ! models ){
+	    if (!models) {
 	      return;
 	    }
 	    return this.db.open()
-	      .then( function() {
-	        return self.db.putBatch( models, options );
+	      .then(function () {
+	        return self.db.putBatch(models, options);
 	      });
 	  },
 
 	  /**
 	   *
 	   */
-	  getChangedModels: function(){
-	    return this.filter(function( model ){
+	  getBatch: function (keyArray, options) {
+	    var self = this;
+	    return this.db.open()
+	      .then(function () {
+	        return self.db.getBatch(keyArray, options);
+	      });
+	  },
+
+	  /**
+	   *
+	   */
+	  findHighestIndex: function (keyPath, options) {
+	    var self = this;
+	    return this.db.open()
+	      .then(function () {
+	        return self.db.findHighestIndex(keyPath, options);
+	      });
+	  },
+
+	  /**
+	   *
+	   */
+	  getChangedModels: function () {
+	    return this.filter(function (model) {
 	      return model.isNew() || model.hasChanged();
 	    });
 	  },
@@ -187,20 +209,20 @@
 	  /**
 	   *
 	   */
-	  removeBatch: function( models, options ){
+	  removeBatch: function (models, options) {
 	    options = options || {};
 	    var self = this;
-	    if( _.isEmpty( models ) ){
+	    if (_.isEmpty(models)) {
 	      return;
 	    }
 	    return this.db.open()
-	      .then( function() {
-	        return self.db.removeBatch( models );
+	      .then(function () {
+	        return self.db.removeBatch(models);
 	      })
-	      .then( function(){
-	        self.remove( models );
-	        if( options.success ){
-	          options.success( self, models, options );
+	      .then(function () {
+	        self.remove(models);
+	        if (options.success) {
+	          options.success(self, models, options);
 	        }
 	        return models;
 	      });
@@ -480,8 +502,13 @@
 	    });
 	  },
 
-	  getBatch: function (options) {
-	    options = options || {};
+	  getBatch: function (keyArray, options) {
+	    if(_.isArray(keyArray)){
+	      options = options || {};
+	      options.filter = _.merge({in: keyArray}, options.filter);
+	    } else {
+	      options = keyArray || {};
+	    }
 	    var self = this, objectStore = options.objectStore || this.getObjectStore(consts.READ_ONLY);
 
 	    if (objectStore.getAll === undefined || this.hasGetParams(options)) {
@@ -515,15 +542,25 @@
 	    var objectStore = options.objectStore || this.getObjectStore(consts.READ_ONLY),
 	        limit = _.get(options, ['filter', 'limit'], this.opts.pageSize),
 	        include = _.get(options, ['filter', 'in']),
-	        keyPath = this.opts.keyPath,
+	        keyPath = options.index || this.opts.keyPath,
 	        self = this;
+
+	    if(_.isObject(keyPath)){
+	      keyPath = keyPath.keyPath;
+	    }
 
 	    if (limit === -1) {
 	      limit = Infinity;
 	    }
 
 	    return new Promise(function (resolve, reject) {
-	      var request = objectStore.openCursor();
+	      var request;
+	      if(keyPath === self.opts.keyPath){
+	        request = objectStore.openCursor();
+	      } else {
+	        var openIndex = objectStore.index(keyPath);
+	        request = openIndex.openCursor();
+	      }
 	      var records = [];
 
 	      request.onsuccess = function (event) {

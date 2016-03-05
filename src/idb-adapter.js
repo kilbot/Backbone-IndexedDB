@@ -266,8 +266,13 @@ IDBAdapter.prototype = {
     });
   },
 
-  getBatch: function (options) {
-    options = options || {};
+  getBatch: function (keyArray, options) {
+    if(_.isArray(keyArray)){
+      options = options || {};
+      options.filter = _.merge({in: keyArray}, options.filter);
+    } else {
+      options = keyArray || {};
+    }
     var self = this, objectStore = options.objectStore || this.getObjectStore(consts.READ_ONLY);
 
     if (objectStore.getAll === undefined || this.hasGetParams(options)) {
@@ -301,15 +306,25 @@ IDBAdapter.prototype = {
     var objectStore = options.objectStore || this.getObjectStore(consts.READ_ONLY),
         limit = _.get(options, ['filter', 'limit'], this.opts.pageSize),
         include = _.get(options, ['filter', 'in']),
-        keyPath = this.opts.keyPath,
+        keyPath = options.index || this.opts.keyPath,
         self = this;
+
+    if(_.isObject(keyPath)){
+      keyPath = keyPath.keyPath;
+    }
 
     if (limit === -1) {
       limit = Infinity;
     }
 
     return new Promise(function (resolve, reject) {
-      var request = objectStore.openCursor();
+      var request;
+      if(keyPath === self.opts.keyPath){
+        request = objectStore.openCursor();
+      } else {
+        var openIndex = objectStore.index(keyPath);
+        request = openIndex.openCursor();
+      }
       var records = [];
 
       request.onsuccess = function (event) {
