@@ -231,7 +231,7 @@ IDBAdapter.prototype = {
     options = options || {};
     var self = this, keyPath = options.index;
     var fn = function(result, data){
-      return _.merge(result, data);
+      return _.merge({}, result, data);
     };
 
     if(_.isObject(options.index)){
