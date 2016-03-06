@@ -351,7 +351,7 @@ describe('Backbone IndexedDB', function () {
                 } else {
                   newData._state = 'new';
                 }
-                return _.merge({}, oldData, newData);
+                return _.merge(oldData, newData);
               }
             }
           }
