@@ -154,6 +154,9 @@
 	    return this.db.open()
 	      .then(function () {
 	        return self.db.count();
+	      })
+	      .then(function (count) {
+	        self.trigger('count', count);
 	      });
 	  },
 
