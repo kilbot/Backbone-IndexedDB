@@ -47,6 +47,7 @@ module.exports = bb.IDBCollection = bb.Collection.extend({
       })
       .then(function (count) {
         self.trigger('count', count);
+        return count;
       });
   },
 

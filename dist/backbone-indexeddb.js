@@ -157,6 +157,7 @@
 	      })
 	      .then(function (count) {
 	        self.trigger('count', count);
+	        return count;
 	      });
 	  },
 
