@@ -3,8 +3,22 @@ var IDBAdapter = require('./idb-adapter');
 var IDBModel = require('./idb-model');
 var _ = require('lodash');
 
+var Collection = bb.Collection.extend({
+  constructor: function() {
+    bb.Collection.apply(this, arguments);
+    this._isNew = true;
+    this.once('sync', function() {
+      this._isNew = false;
+    });
+  },
+
+  isNew: function() {
+    return this._isNew;
+  }
+});
+
 // attach to Backbone
-module.exports = bb.IDBCollection = bb.Collection.extend({
+module.exports = bb.IDBCollection = Collection.extend({
 
   model: IDBModel,
 
