@@ -305,8 +305,10 @@ IDBAdapter.prototype = {
     options = options || {};
     var objectStore = options.objectStore || this.getObjectStore(consts.READ_ONLY),
         limit = _.get(options, ['filter', 'limit'], this.opts.pageSize),
+        offset = _.get(options, ['filter', 'offset'], 0),
         include = _.get(options, ['filter', 'in']),
         keyPath = options.index || this.opts.keyPath,
+        page = options.page,
         self = this;
 
     if(_.isObject(keyPath)){
@@ -315,6 +317,10 @@ IDBAdapter.prototype = {
 
     if (limit === -1) {
       limit = Infinity;
+    }
+
+    if(page){
+      offset = (page - 1) * limit;
     }
 
     return new Promise(function (resolve, reject) {
@@ -326,11 +332,12 @@ IDBAdapter.prototype = {
         request = openIndex.openCursor();
       }
       var records = [];
+      var idx = 0;
 
       request.onsuccess = function (event) {
         var cursor = event.target.result;
         if (cursor && records.length < limit) {
-          if(!include || include.indexOf(cursor.value[keyPath]) !== -1){
+          if( (!include || include.indexOf(cursor.value[keyPath]) !== -1 ) && ++idx > offset){
             records.push(cursor.value);
           }
           return cursor.continue();

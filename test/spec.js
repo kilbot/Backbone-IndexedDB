@@ -513,6 +513,35 @@ describe('Backbone IndexedDB', function () {
       .catch(done);
   });
 
+  it('fetch paginated and offset requests', function(done){
+    for(var data = [], i = 0; i < 50; i++) {
+      data.push({ foo: i });
+    }
+
+    var collection = new Collection();
+
+    collection.putBatch(data)
+      .then(function(){
+        return collection.fetch({ data: { page: 1 } });
+      })
+      .then(function(){
+        expect(collection).to.have.length(10);
+        expect(collection.map('id')).eqls([1,2,3,4,5,6,7,8,9,10]);
+        return collection.fetch({ data: { page: 2 } });
+      })
+      .then(function(){
+        expect(collection).to.have.length(10);
+        expect(collection.map('id')).eqls([11,12,13,14,15,16,17,18,19,20]);
+        return collection.fetch({ data: { filter: { offset: 20 } } });
+      })
+      .then(function(){
+        expect(collection).to.have.length(10);
+        expect(collection.map('id')).eqls([21,22,23,24,25,26,27,28,29,30]);
+        done();
+      })
+      .catch(done);
+  });
+
   /**
    * Unit testing is not good for benchmarking
    * eg: an open console will slow indexedDB dramatically
