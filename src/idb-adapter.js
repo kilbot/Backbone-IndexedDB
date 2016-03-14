@@ -230,12 +230,15 @@ IDBAdapter.prototype = {
   merge: function (data, options) {
     options = options || {};
     var self = this, keyPath = options.index;
-    var fn = function(result, data){
-      return _.merge({}, result, data);
+    var primaryKey = this.opts.keyPath;
+
+    var fn = function(local, remote, keyPath){
+      remote[keyPath] = local[keyPath];
+      return remote;
     };
 
     if(_.isObject(options.index)){
-      keyPath = _.get(options, ['index', 'keyPath'], this.opts.keyPath);
+      keyPath = _.get(options, ['index', 'keyPath'], primaryKey);
       if(_.isFunction(options.index.merge)){
         fn = options.index.merge;
       }
@@ -243,7 +246,7 @@ IDBAdapter.prototype = {
 
     return this.getByIndex(keyPath, data[keyPath], options)
       .then(function(result){
-        return self.put(fn(result, data));
+        return self.put(fn(result, data, primaryKey));
       });
   },
 
@@ -267,13 +270,12 @@ IDBAdapter.prototype = {
   },
 
   getBatch: function (keyArray, options) {
-    if(_.isArray(keyArray)){
-      options = options || {};
-      options.filter = _.merge({in: keyArray}, options.filter);
-    } else {
-      options = keyArray || {};
-    }
+    options = options || keyArray || {};
     var self = this, objectStore = options.objectStore || this.getObjectStore(consts.READ_ONLY);
+
+    if(_.isArray(keyArray)){
+      options.filter = _.merge({in: keyArray}, options.filter);
+    }
 
     if (objectStore.getAll === undefined || this.hasGetParams(options)) {
       if(!options.objectStore){

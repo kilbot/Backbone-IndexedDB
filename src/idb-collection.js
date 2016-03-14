@@ -35,7 +35,7 @@ module.exports = bb.IDBCollection = Collection.extend({
 
     this.db = new IDBAdapter(opts);
 
-    bb.Collection.apply(this, arguments);
+    Collection.apply(this, arguments);
   },
 
   /**

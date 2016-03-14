@@ -345,13 +345,14 @@ describe('Backbone IndexedDB', function () {
           {
             index: {
               keyPath: 'id',
-              merge  : function (oldData, newData) {
-                if (_.has(oldData, 'local_id')) {
-                  newData._state = 'updated';
+              merge  : function (local, remote, primaryKey) {
+                if(local){
+                  remote[primaryKey] = local[primaryKey];
+                  remote._state = 'updated';
                 } else {
-                  newData._state = 'new';
+                  remote._state = 'new';
                 }
-                return _.merge({}, oldData, newData);
+                return remote;
               }
             }
           }
