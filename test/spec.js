@@ -514,7 +514,7 @@ describe('Backbone IndexedDB', function () {
       .catch(done);
   });
 
-  it('fetch paginated and offset requests', function(done){
+  it('should fetch paginated and offset requests', function(done){
     for(var data = [], i = 0; i < 50; i++) {
       data.push({ foo: i });
     }
@@ -541,6 +541,141 @@ describe('Backbone IndexedDB', function () {
         done();
       })
       .catch(done);
+  });
+
+  describe('Simple query requests', function() {
+
+    it('should query keyPath integer', function (done) {
+      for (var data = [], i = 0; i < 100; i++) {
+        data.push({foo: i});
+      }
+
+      var collection = new Collection();
+
+      collection.putBatch(data)
+        .then(function () {
+          return collection.fetch({data: {filter: {q: 17}}});
+        })
+        .then(function () {
+          expect(collection).to.have.length(1);
+          expect(collection.at(0).id).eqls(17);
+          return collection.fetch({data: {filter: {q: 1}}});
+        })
+        .then(function () {
+          expect(collection).to.have.length(10);
+          expect(collection.map('id')).eqls([1, 10, 11, 12, 13, 14, 15, 16, 17, 18]);
+          return collection.fetch({data: {page: 2, filter: {q: 1}}});
+        })
+        .then(function () {
+          expect(collection).to.have.length(10);
+          expect(collection.map('id')).eqls([19, 21, 31, 41, 51, 61, 71, 81, 91, 100]);
+          return collection.fetch({data: {page: 3, filter: {q: 1}}});
+        })
+        .then(function () {
+          expect(collection).to.have.length(0);
+          done();
+        })
+        .catch(done);
+    });
+
+    it('should query index', function (done) {
+      var IndexedCollection = Collection.extend({
+        indexes: [
+          {name: 'age', keyPath: 'age'}
+        ],
+      });
+      var collection = new IndexedCollection();
+
+      var data = [
+        {
+          firstname: 'Jane',
+          lastname : 'Smith',
+          age      : 35,
+          email    : 'janesmith@example.com'
+        }, {
+          firstname: 'John',
+          lastname : 'Doe',
+          age      : 52,
+          email    : 'johndoe@example.com'
+        }, {
+          firstname: 'Joe',
+          lastname : 'Bloggs',
+          age      : 28,
+          email    : 'joebloggs@example.com'
+        }
+      ];
+
+      collection.putBatch(data)
+        .then(function () {
+          return collection.fetch({data: {index: 'age', filter: {q: 52}}});
+        })
+        .then(function () {
+          expect(collection).to.have.length(1);
+          expect(collection.map('age')).eqls([52]);
+          return collection.fetch({data: {index: 'age', filter: {q: 2}}});
+        })
+        .then(function () {
+          expect(collection).to.have.length(2);
+          expect(collection.map('age')).eqls([28, 52]); // note: ordered
+          done();
+        })
+        .catch(done);
+    });
+
+    it('should query non-index field(s)', function (done) {
+      var collection = new Collection();
+
+      var data = [
+        {
+          firstname: 'Jane',
+          lastname : 'Smith',
+          age      : 35,
+          email    : 'janesmith@example.com'
+        }, {
+          firstname: 'John',
+          lastname : 'Doe',
+          age      : 52,
+          email    : 'johndoe@example.com'
+        }, {
+          firstname: 'Joe',
+          lastname : 'Bloggs',
+          age      : 28,
+          email    : 'joebloggs@example.com'
+        }
+      ];
+
+      collection.putBatch(data)
+        .then(function () {
+          return collection.fetch({
+            data: {
+              filter: {
+                q: [{query: 'doe', type: 'string'}],
+                fields: ['firstname', 'lastname']
+              }
+            }
+          });
+        })
+        .then(function () {
+          expect(collection).to.have.length(1);
+          expect(collection.map('firstname')).eqls(['John']);
+          return collection.fetch({
+            data: {
+              filter: {
+                q: [{query: 'jo', type: 'string'}],
+                fields: ['firstname', 'lastname']
+              }
+            }
+          });
+        })
+        .then(function () {
+          expect(collection).to.have.length(2);
+          expect(collection.map('firstname')).eqls(['John', 'Joe']);
+          done();
+        })
+        .catch(done);
+
+    });
+
   });
 
   /**

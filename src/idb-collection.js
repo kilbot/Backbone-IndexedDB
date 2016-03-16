@@ -2,6 +2,7 @@ var bb = require('backbone');
 var IDBAdapter = require('./idb-adapter');
 var IDBModel = require('./idb-model');
 var _ = require('lodash');
+var matchMarker = require('json-query');
 
 var Collection = bb.Collection.extend({
   constructor: function() {
@@ -23,18 +24,7 @@ module.exports = bb.IDBCollection = Collection.extend({
   model: IDBModel,
 
   constructor: function () {
-    var opts = {
-      storeName    : this.name,
-      storePrefix  : this.storePrefix,
-      dbVersion    : this.dbVersion,
-      keyPath      : this.keyPath,
-      autoIncrement: this.autoIncrement,
-      indexes      : this.indexes,
-      pageSize     : this.pageSize
-    };
-
-    this.db = new IDBAdapter(opts);
-
+    this.db = new IDBAdapter({ collection: this });
     Collection.apply(this, arguments);
   },
 
@@ -134,6 +124,8 @@ module.exports = bb.IDBCollection = Collection.extend({
         }
         return models;
       });
-  }
+  },
+
+  matchMaker: matchMarker
 
 });

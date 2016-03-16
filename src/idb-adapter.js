@@ -33,7 +33,10 @@ var defaults = {
 };
 
 function IDBAdapter( options ){
-  this.opts = _.defaults( options, defaults );
+  options = options || {};
+  this.parent = options.collection;
+  this.opts = _.defaults(_.pick(this.parent, _.keys(defaults)), defaults);
+  this.opts.storeName = this.parent.name || defaults.storeName;
   this.opts.dbName = this.opts.storePrefix + this.opts.storeName;
 }
 
@@ -233,7 +236,9 @@ IDBAdapter.prototype = {
     var primaryKey = this.opts.keyPath;
 
     var fn = function(local, remote, keyPath){
-      remote[keyPath] = local[keyPath];
+      if(local){
+        remote[keyPath] = local[keyPath];
+      }
       return remote;
     };
 
@@ -309,6 +314,7 @@ IDBAdapter.prototype = {
         limit = _.get(options, ['filter', 'limit'], this.opts.pageSize),
         offset = _.get(options, ['filter', 'offset'], 0),
         include = _.get(options, ['filter', 'in']),
+        query = _.get(options, ['filter', 'q']),
         keyPath = options.index || this.opts.keyPath,
         page = options.page,
         self = this;
@@ -326,20 +332,18 @@ IDBAdapter.prototype = {
     }
 
     return new Promise(function (resolve, reject) {
-      var request;
-      if(keyPath === self.opts.keyPath){
-        request = objectStore.openCursor();
-      } else {
-        var openIndex = objectStore.index(keyPath);
-        request = openIndex.openCursor();
-      }
-      var records = [];
-      var idx = 0;
+      var records = [], idx = 0;
+      var request = (keyPath === self.opts.keyPath) ?
+        objectStore.openCursor() : objectStore.index(keyPath).openCursor();
 
       request.onsuccess = function (event) {
         var cursor = event.target.result;
         if (cursor && records.length < limit) {
-          if( (!include || include.indexOf(cursor.value[keyPath]) !== -1 ) && ++idx > offset){
+          if(
+            (!include || _.includes(include, cursor.value[keyPath])) &&
+            (!query || self._match(query, cursor.value, keyPath, options)) &&
+            ++idx > offset
+          ){
             records.push(cursor.value);
           }
           return cursor.continue();
@@ -417,6 +421,15 @@ IDBAdapter.prototype = {
       return true;
     }
     return false;
+  },
+
+  _match: function(query, json, keyPath, options){
+    if(_.isString(query) || _.isInteger(query)){
+      return json[keyPath].toString().indexOf(query.toString()) !== -1;
+    }
+    if(_.isArray(query)){
+      return this.parent.matchMaker(json, query, options.filter);
+    }
   }
 
 };
