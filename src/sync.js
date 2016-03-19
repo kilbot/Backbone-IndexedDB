@@ -1,4 +1,5 @@
 var bb = require('backbone');
+var _ = require('lodash');
 
 /* jshint -W074 */
 module.exports = function(method, entity, options) {
@@ -12,7 +13,8 @@ module.exports = function(method, entity, options) {
           if (isModel) {
             return entity.db.get(entity.id);
           }
-          return entity.db.getBatch(options.data);
+          var data = _.clone(options.data);
+          return entity.db.getBatch(data);
         case 'create':
           return entity.db.add(entity.toJSON())
             .then(function (key) {

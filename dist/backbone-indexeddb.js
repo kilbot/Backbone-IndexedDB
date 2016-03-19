@@ -780,6 +780,7 @@
 /***/ function(module, exports, __webpack_require__) {
 
 	var bb = __webpack_require__(1);
+	var _ = __webpack_require__(3);
 
 	/* jshint -W074 */
 	module.exports = function(method, entity, options) {
@@ -793,7 +794,8 @@
 	          if (isModel) {
 	            return entity.db.get(entity.id);
 	          }
-	          return entity.db.getBatch(options.data);
+	          var data = _.clone(options.data);
+	          return entity.db.getBatch(data);
 	        case 'create':
 	          return entity.db.add(entity.toJSON())
 	            .then(function (key) {
