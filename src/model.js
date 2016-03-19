@@ -1,5 +1,4 @@
 var _ = require('lodash');
-var idbSync = require('./sync');
 
 module.exports = function(Model){
 
@@ -12,9 +11,7 @@ module.exports = function(Model){
       }
 
       Model.apply(this, arguments);
-    },
-
-    sync: idbSync
+    }
 
   });
 

@@ -47,8 +47,9 @@
 	var bb = __webpack_require__(1);
 
 	var createIDBModel = __webpack_require__(2);
-	var createIDBCollection = __webpack_require__(5);
+	var createIDBCollection = __webpack_require__(4);
 
+	bb.sync = __webpack_require__(8);
 	bb.IDBModel = createIDBModel(bb.Model);
 	bb.IDBCollection = createIDBCollection(bb.Collection);
 	bb.IDBCollection.prototype.model = bb.IDBModel;
@@ -64,7 +65,6 @@
 /***/ function(module, exports, __webpack_require__) {
 
 	var _ = __webpack_require__(3);
-	var idbSync = __webpack_require__(4);
 
 	module.exports = function(Model){
 
@@ -77,9 +77,7 @@
 	      }
 
 	      Model.apply(this, arguments);
-	    },
-
-	    sync: idbSync
+	    }
 
 	  });
 
@@ -95,59 +93,7 @@
 /* 4 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var bb = __webpack_require__(1);
-
-	/* jshint -W074 */
-	module.exports = function(method, entity, options) {
-	  options = options || {};
-	  var isModel = entity instanceof bb.Model;
-
-	  return entity.db.open()
-	    .then(function () {
-	      switch (method) {
-	        case 'read':
-	          if (isModel) {
-	            return entity.db.get(entity.id);
-	          }
-	          return entity.db.getBatch(options.data);
-	        case 'create':
-	          return entity.db.add(entity.toJSON())
-	            .then(function (key) {
-	              return entity.db.get(key);
-	            });
-	        case 'update':
-	          return entity.db.put(entity.toJSON())
-	            .then(function (key) {
-	              return entity.db.get(key);
-	            });
-	        case 'delete':
-	          if (isModel) {
-	            return entity.db.delete(entity.id);
-	          }
-	          return;
-	      }
-	    })
-	    .then(function (resp) {
-	      if (options.success) {
-	        options.success(resp);
-	      }
-	      return resp;
-	    })
-	    .catch(function (resp) {
-	      if (options.error) {
-	        options.error(resp);
-	      }
-	    });
-
-	};
-	/* jshint +W074 */
-
-/***/ },
-/* 5 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var IDBAdapter = __webpack_require__(6);
-	var idbSync = __webpack_require__(4);
+	var IDBAdapter = __webpack_require__(5);
 	var _ = __webpack_require__(3);
 
 	module.exports = function(Collection){
@@ -158,9 +104,7 @@
 	      this.db = new IDBAdapter({ collection: this });
 	      Collection.apply(this, arguments);
 	    },
-
-	    sync: idbSync,
-
+	    
 	    /**
 	     * Clears the IDB storage and resets the collection
 	     */
@@ -264,12 +208,12 @@
 	};
 
 /***/ },
-/* 6 */
+/* 5 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jshint -W071, -W074 */
 	var _ = __webpack_require__(3);
-	var matchMaker = __webpack_require__(7);
+	var matchMaker = __webpack_require__(6);
 
 	var is_safari = window.navigator.userAgent.indexOf('Safari') !== -1 &&
 	  window.navigator.userAgent.indexOf('Chrome') === -1 &&
@@ -706,11 +650,11 @@
 	/* jshint +W071, +W074 */
 
 /***/ },
-/* 7 */
+/* 6 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var _ = __webpack_require__(3);
-	var match = __webpack_require__(8);
+	var match = __webpack_require__(7);
 
 	var defaults = {
 	  fields: ['title'] // json property to use for simple string search
@@ -782,7 +726,7 @@
 	};
 
 /***/ },
-/* 8 */
+/* 7 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var _ = __webpack_require__(3);
@@ -830,6 +774,57 @@
 	    return match[type](haystack, needle, opts);
 	  }
 	};
+
+/***/ },
+/* 8 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var bb = __webpack_require__(1);
+
+	/* jshint -W074 */
+	module.exports = function(method, entity, options) {
+	  options = options || {};
+	  var isModel = entity instanceof bb.Model;
+
+	  return entity.db.open()
+	    .then(function () {
+	      switch (method) {
+	        case 'read':
+	          if (isModel) {
+	            return entity.db.get(entity.id);
+	          }
+	          return entity.db.getBatch(options.data);
+	        case 'create':
+	          return entity.db.add(entity.toJSON())
+	            .then(function (key) {
+	              return entity.db.get(key);
+	            });
+	        case 'update':
+	          return entity.db.put(entity.toJSON())
+	            .then(function (key) {
+	              return entity.db.get(key);
+	            });
+	        case 'delete':
+	          if (isModel) {
+	            return entity.db.delete(entity.id);
+	          }
+	          return;
+	      }
+	    })
+	    .then(function (resp) {
+	      if (options.success) {
+	        options.success(resp);
+	      }
+	      return resp;
+	    })
+	    .catch(function (resp) {
+	      if (options.error) {
+	        options.error(resp);
+	      }
+	    });
+
+	};
+	/* jshint +W074 */
 
 /***/ }
 /******/ ]);

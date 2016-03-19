@@ -1,5 +1,4 @@
 var IDBAdapter = require('./adapter');
-var idbSync = require('./sync');
 var _ = require('lodash');
 
 module.exports = function(Collection){
@@ -10,9 +9,7 @@ module.exports = function(Collection){
       this.db = new IDBAdapter({ collection: this });
       Collection.apply(this, arguments);
     },
-
-    sync: idbSync,
-
+    
     /**
      * Clears the IDB storage and resets the collection
      */
