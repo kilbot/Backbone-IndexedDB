@@ -45,8 +45,13 @@
 /***/ function(module, exports, __webpack_require__) {
 
 	var bb = __webpack_require__(1);
-	bb.sync = __webpack_require__(2);
-	__webpack_require__(3);
+
+	var createIDBModel = __webpack_require__(2);
+	var createIDBCollection = __webpack_require__(5);
+
+	bb.IDBModel = createIDBModel(bb.Model);
+	bb.IDBCollection = createIDBCollection(bb.Collection);
+	bb.IDBCollection.prototype.model = bb.IDBModel;
 
 /***/ },
 /* 1 */
@@ -56,6 +61,38 @@
 
 /***/ },
 /* 2 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var _ = __webpack_require__(3);
+	var idbSync = __webpack_require__(4);
+
+	module.exports = function(Model){
+
+	  return Model.extend({
+
+	    constructor: function (attributes, options) {
+	      this.db = _.get(options, ['collection', 'db']);
+	      if (!this.db) {
+	        throw Error('Model must be in an IDBCollection');
+	      }
+
+	      Model.apply(this, arguments);
+	    },
+
+	    sync: idbSync
+
+	  });
+
+	};
+
+/***/ },
+/* 3 */
+/***/ function(module, exports) {
+
+	module.exports = _;
+
+/***/ },
+/* 4 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var bb = __webpack_require__(1);
@@ -94,6 +131,7 @@
 	      if (options.success) {
 	        options.success(resp);
 	      }
+	      return resp;
 	    })
 	    .catch(function (resp) {
 	      if (options.error) {
@@ -105,147 +143,134 @@
 	/* jshint +W074 */
 
 /***/ },
-/* 3 */
+/* 5 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var bb = __webpack_require__(1);
-	var IDBAdapter = __webpack_require__(4);
-	var IDBModel = __webpack_require__(6);
-	var _ = __webpack_require__(5);
-	var matchMarker = __webpack_require__(7);
+	var IDBAdapter = __webpack_require__(6);
+	var idbSync = __webpack_require__(4);
+	var _ = __webpack_require__(3);
 
-	var Collection = bb.Collection.extend({
-	  constructor: function() {
-	    bb.Collection.apply(this, arguments);
-	    this._isNew = true;
-	    this.once('sync', function() {
-	      this._isNew = false;
-	    });
-	  },
+	module.exports = function(Collection){
+	  
+	  return Collection.extend({
 
-	  isNew: function() {
-	    return this._isNew;
-	  }
-	});
+	    constructor: function () {
+	      this.db = new IDBAdapter({ collection: this });
+	      Collection.apply(this, arguments);
+	    },
 
-	// attach to Backbone
-	module.exports = bb.IDBCollection = Collection.extend({
+	    sync: idbSync,
 
-	  model: IDBModel,
+	    /**
+	     * Clears the IDB storage and resets the collection
+	     */
+	    clear: function () {
+	      var self = this;
+	      return this.db.open()
+	        .then(function () {
+	          self.reset();
+	          return self.db.clear();
+	        });
+	    },
 
-	  constructor: function () {
-	    this.db = new IDBAdapter({ collection: this });
-	    Collection.apply(this, arguments);
-	  },
+	    /**
+	     *
+	     */
+	    count: function () {
+	      var self = this;
+	      return this.db.open()
+	        .then(function () {
+	          return self.db.count();
+	        })
+	        .then(function (count) {
+	          self.trigger('count', count);
+	          return count;
+	        });
+	    },
 
-	  /**
-	   * Clears the IDB storage and resets the collection
-	   */
-	  clear: function () {
-	    var self = this;
-	    return this.db.open()
-	      .then(function () {
-	        self.reset();
-	        return self.db.clear();
+	    /**
+	     *
+	     */
+	    putBatch: function (models, options) {
+	      options = options || {};
+	      var self = this;
+	      if (_.isEmpty(models)) {
+	        models = this.getChangedModels();
+	      }
+	      if (!models) {
+	        return;
+	      }
+	      return this.db.open()
+	        .then(function () {
+	          return self.db.putBatch(models, options);
+	        });
+	    },
+
+	    /**
+	     *
+	     */
+	    getBatch: function (keyArray, options) {
+	      var self = this;
+	      return this.db.open()
+	        .then(function () {
+	          return self.db.getBatch(keyArray, options);
+	        });
+	    },
+
+	    /**
+	     *
+	     */
+	    findHighestIndex: function (keyPath, options) {
+	      var self = this;
+	      return this.db.open()
+	        .then(function () {
+	          return self.db.findHighestIndex(keyPath, options);
+	        });
+	    },
+
+	    /**
+	     *
+	     */
+	    getChangedModels: function () {
+	      return this.filter(function (model) {
+	        return model.isNew() || model.hasChanged();
 	      });
-	  },
+	    },
 
-	  /**
-	   *
-	   */
-	  count: function () {
-	    var self = this;
-	    return this.db.open()
-	      .then(function () {
-	        return self.db.count();
-	      })
-	      .then(function (count) {
-	        self.trigger('count', count);
-	        return count;
-	      });
-	  },
-
-	  /**
-	   *
-	   */
-	  putBatch: function (models, options) {
-	    options = options || {};
-	    var self = this;
-	    if (_.isEmpty(models)) {
-	      models = this.getChangedModels();
+	    /**
+	     *
+	     */
+	    removeBatch: function (models, options) {
+	      options = options || {};
+	      var self = this;
+	      if (_.isEmpty(models)) {
+	        return;
+	      }
+	      return this.db.open()
+	        .then(function () {
+	          return self.db.removeBatch(models);
+	        })
+	        .then(function () {
+	          self.remove(models);
+	          if (options.success) {
+	            options.success(self, models, options);
+	          }
+	          return models;
+	        });
 	    }
-	    if (!models) {
-	      return;
-	    }
-	    return this.db.open()
-	      .then(function () {
-	        return self.db.putBatch(models, options);
-	      });
-	  },
 
-	  /**
-	   *
-	   */
-	  getBatch: function (keyArray, options) {
-	    var self = this;
-	    return this.db.open()
-	      .then(function () {
-	        return self.db.getBatch(keyArray, options);
-	      });
-	  },
-
-	  /**
-	   *
-	   */
-	  findHighestIndex: function (keyPath, options) {
-	    var self = this;
-	    return this.db.open()
-	      .then(function () {
-	        return self.db.findHighestIndex(keyPath, options);
-	      });
-	  },
-
-	  /**
-	   *
-	   */
-	  getChangedModels: function () {
-	    return this.filter(function (model) {
-	      return model.isNew() || model.hasChanged();
-	    });
-	  },
-
-	  /**
-	   *
-	   */
-	  removeBatch: function (models, options) {
-	    options = options || {};
-	    var self = this;
-	    if (_.isEmpty(models)) {
-	      return;
-	    }
-	    return this.db.open()
-	      .then(function () {
-	        return self.db.removeBatch(models);
-	      })
-	      .then(function () {
-	        self.remove(models);
-	        if (options.success) {
-	          options.success(self, models, options);
-	        }
-	        return models;
-	      });
-	  },
-
-	  matchMaker: matchMarker
-
-	});
+	  });
+	  
+	};
 
 /***/ },
-/* 4 */
+/* 6 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jshint -W071, -W074 */
-	var _ = __webpack_require__(5);
+	var _ = __webpack_require__(3);
+	var matchMaker = __webpack_require__(7);
+
 	var is_safari = window.navigator.userAgent.indexOf('Safari') !== -1 &&
 	  window.navigator.userAgent.indexOf('Chrome') === -1 &&
 	  window.navigator.userAgent.indexOf('Android') === -1;
@@ -262,31 +287,32 @@
 	  'PREV_NO_DUPLICATE' : 'prevunique'
 	};
 
-	var defaults = {
-	  storeName     : 'store',
-	  storePrefix   : 'Prefix_',
-	  dbVersion     : 1,
-	  keyPath       : 'id',
-	  autoIncrement : true,
-	  indexes       : [],
-	  pageSize      : 10,
-	  onerror       : function(options) {
-	    options = options || {};
-	    var err = new Error(options._error.message);
-	    err.code = event.target.errorCode;
-	    options._error.callback(err);
-	  }
-	};
-
 	function IDBAdapter( options ){
 	  options = options || {};
 	  this.parent = options.collection;
-	  this.opts = _.defaults(_.pick(this.parent, _.keys(defaults)), defaults);
-	  this.opts.storeName = this.parent.name || defaults.storeName;
+	  this.opts = _.defaults(_.pick(this.parent, _.keys(this.default)), this.default);
+	  this.opts.storeName = this.parent.name || this.default.storeName;
 	  this.opts.dbName = this.opts.storePrefix + this.opts.storeName;
 	}
 
 	IDBAdapter.prototype = {
+
+	  default: {
+	    storeName     : 'store',
+	    storePrefix   : 'Prefix_',
+	    dbVersion     : 1,
+	    keyPath       : 'id',
+	    autoIncrement : true,
+	    indexes       : [],
+	    pageSize      : 10,
+	    matchMaker    : matchMaker,
+	    onerror       : function(options) {
+	      options = options || {};
+	      var err = new Error(options._error.message);
+	      err.code = event.target.errorCode;
+	      options._error.callback(err);
+	    }
+	  },
 
 	  constructor: IDBAdapter,
 
@@ -670,12 +696,8 @@
 	  },
 
 	  _match: function(query, json, keyPath, options){
-	    if(_.isString(query) || _.isInteger(query)){
-	      return json[keyPath].toString().indexOf(query.toString()) !== -1;
-	    }
-	    if(_.isArray(query)){
-	      return this.parent.matchMaker(json, query, options.filter);
-	    }
+	    var fields = _.get(options, ['filter', 'fields'], keyPath);
+	    return this.opts.matchMaker.call(this, json, query, {fields: fields});
 	  }
 
 	};
@@ -684,43 +706,22 @@
 	/* jshint +W071, +W074 */
 
 /***/ },
-/* 5 */
-/***/ function(module, exports) {
-
-	module.exports = _;
-
-/***/ },
-/* 6 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var bb = __webpack_require__(1);
-	var _ = __webpack_require__(5);
-
-	// attach to Backbone
-	module.exports = bb.IDBModel = bb.Model.extend({
-
-	  // idAttribute: this.collection.db.store.keyPath
-
-	  constructor: function( attributes, options ){
-	    this.db = _.get( options, ['collection', 'db'] );
-	    if( !this.db ){
-	      throw Error('Model must be in an IDBCollection');
-	    }
-
-	    bb.Model.apply( this, arguments );
-	  }
-
-	});
-
-/***/ },
 /* 7 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _ = __webpack_require__(5);
+	var _ = __webpack_require__(3);
 	var match = __webpack_require__(8);
 
 	var defaults = {
 	  fields: ['title'] // json property to use for simple string search
+	};
+
+	var pick = function(json, props){
+	  return _.chain(props)
+	    .map(function (key) {
+	      return _.get(json, key); // allows nested get
+	    })
+	    .value();
 	};
 
 	var methods = {
@@ -728,12 +729,7 @@
 	  string: function(json, filter, options) {
 	    var fields = _.isArray(options.fields) ? options.fields : [options.fields];
 	    var needle = filter.query ? filter.query.toLowerCase() : '';
-
-	    var haystacks = _.chain(fields)
-	      .map(function (key) {
-	        return _.get(json, key); // allows nested get
-	      })
-	      .value();
+	    var haystacks = pick(json, fields);
 
 	    return _.some(haystacks, function (haystack) {
 	      return match(haystack, needle, options);
@@ -744,9 +740,29 @@
 	    return this.string(json, filter, {fields: filter.prefix});
 	  },
 
+	  range: function(json, filter, options){
+	    var fields = _.isArray(options.fields) ? options.fields : [options.fields];
+	    var haystacks = pick(json, fields);
+
+	    return _.some(haystacks, function (haystack) {
+	      return _.inRange(haystack, filter.from, filter.to);
+	    });
+	  },
+
+	  prange: function(json, filter){
+	    return this.range(json, filter, {fields: filter.prefix});
+	  },
+
 	  or: function(json, filter, options){
 	    var self = this;
 	    return _.some(filter.queries, function(query){
+	      return self[query.type](json, query, options);
+	    });
+	  },
+
+	  and: function(json, filter, options){
+	    var self = this;
+	    return _.every(filter.queries, function(query){
 	      return self[query.type](json, query, options);
 	    });
 	  }
@@ -757,10 +773,9 @@
 	  var opts = _.defaults({}, options, defaults);
 
 	  if (!_.isArray(filterArray)) {
-	    filterArray = [{type: 'string', query: filterArray}];
+	    filterArray = [{type: 'string', query: filterArray.toString()}];
 	  }
 
-	  // todo: every = AND, some = OR
 	  return _.every(filterArray, function (filter) {
 	    return methods[filter.type](json, filter, opts);
 	  });
@@ -770,7 +785,7 @@
 /* 8 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _ = __webpack_require__(5);
+	var _ = __webpack_require__(3);
 
 	var toType = function(obj){
 	  return ({}).toString.call(obj).match(/\s([a-z|A-Z]+)/)[1].toLowerCase();

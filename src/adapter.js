@@ -1,5 +1,7 @@
 /* jshint -W071, -W074 */
 var _ = require('lodash');
+var matchMaker = require('json-query');
+
 var is_safari = window.navigator.userAgent.indexOf('Safari') !== -1 &&
   window.navigator.userAgent.indexOf('Chrome') === -1 &&
   window.navigator.userAgent.indexOf('Android') === -1;
@@ -16,31 +18,32 @@ var consts = {
   'PREV_NO_DUPLICATE' : 'prevunique'
 };
 
-var defaults = {
-  storeName     : 'store',
-  storePrefix   : 'Prefix_',
-  dbVersion     : 1,
-  keyPath       : 'id',
-  autoIncrement : true,
-  indexes       : [],
-  pageSize      : 10,
-  onerror       : function(options) {
-    options = options || {};
-    var err = new Error(options._error.message);
-    err.code = event.target.errorCode;
-    options._error.callback(err);
-  }
-};
-
 function IDBAdapter( options ){
   options = options || {};
   this.parent = options.collection;
-  this.opts = _.defaults(_.pick(this.parent, _.keys(defaults)), defaults);
-  this.opts.storeName = this.parent.name || defaults.storeName;
+  this.opts = _.defaults(_.pick(this.parent, _.keys(this.default)), this.default);
+  this.opts.storeName = this.parent.name || this.default.storeName;
   this.opts.dbName = this.opts.storePrefix + this.opts.storeName;
 }
 
 IDBAdapter.prototype = {
+
+  default: {
+    storeName     : 'store',
+    storePrefix   : 'Prefix_',
+    dbVersion     : 1,
+    keyPath       : 'id',
+    autoIncrement : true,
+    indexes       : [],
+    pageSize      : 10,
+    matchMaker    : matchMaker,
+    onerror       : function(options) {
+      options = options || {};
+      var err = new Error(options._error.message);
+      err.code = event.target.errorCode;
+      options._error.callback(err);
+    }
+  },
 
   constructor: IDBAdapter,
 
@@ -424,12 +427,8 @@ IDBAdapter.prototype = {
   },
 
   _match: function(query, json, keyPath, options){
-    if(_.isString(query) || _.isInteger(query)){
-      return json[keyPath].toString().indexOf(query.toString()) !== -1;
-    }
-    if(_.isArray(query)){
-      return this.parent.matchMaker(json, query, options.filter);
-    }
+    var fields = _.get(options, ['filter', 'fields'], keyPath);
+    return this.opts.matchMaker.call(this, json, query, {fields: fields});
   }
 
 };

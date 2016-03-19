@@ -34,6 +34,7 @@ module.exports = function(method, entity, options) {
       if (options.success) {
         options.success(resp);
       }
+      return resp;
     })
     .catch(function (resp) {
       if (options.error) {

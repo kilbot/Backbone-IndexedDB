@@ -20,6 +20,7 @@ describe('Backbone IndexedDB', function () {
   it('should be in a valid state', function (done) {
     var collection = new Collection();
     expect( collection ).to.be.ok;
+    expect( collection ).to.be.instanceOf( Backbone.Collection );
     expect( collection.db ).not.to.be.undefined;
 
     collection.db.open()
@@ -673,6 +674,54 @@ describe('Backbone IndexedDB', function () {
           done();
         })
         .catch(done);
+
+    });
+
+    it('should query collection.matchMaker', function(done) {
+      var IndexedCollection = Collection.extend({
+        indexes   : [
+          {name: 'age', keyPath: 'age'}
+        ],
+        matchMaker: function(model, query, options){
+          expect(model).to.be.an('object');
+          expect(query).eqls(52);
+          expect(options.fields).eqls('age');
+          if(model.age === 28){
+            return true;
+          }
+          return this.default.matchMaker.apply(this, arguments);
+        }
+      });
+      var collection = new IndexedCollection();
+
+      var data = [
+        {
+          firstname: 'Jane',
+          lastname : 'Smith',
+          age      : 35,
+          email    : 'janesmith@example.com'
+        }, {
+          firstname: 'John',
+          lastname : 'Doe',
+          age      : 52,
+          email    : 'johndoe@example.com'
+        }, {
+          firstname: 'Joe',
+          lastname : 'Bloggs',
+          age      : 28,
+          email    : 'joebloggs@example.com'
+        }
+      ];
+
+      collection.putBatch(data)
+        .then(function () {
+          return collection.fetch({data: {index: 'age', filter: {q: 52}}});
+        })
+        .then(function(){
+          expect(collection).to.have.length(2);
+          expect(collection.map('firstname')).eqls(['Joe', 'John']);
+          done();
+        });
 
     });
 
