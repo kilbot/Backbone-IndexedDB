@@ -305,13 +305,16 @@ IDBAdapter.prototype = {
     }
 
     return new Promise(function (resolve, reject) {
-      var records = [];
+      var records = [], delayed = 0;
       var request = (keyPath === self.opts.keyPath) ?
         objectStore.openCursor() : objectStore.index(keyPath).openCursor();
 
       request.onsuccess = function (event) {
         var cursor = event.target.result;
         if (cursor) {
+          if(cursor.value._state === 'READ_FAILED'){
+            delayed++;
+          }
           if(
             (!include || _.includes(include, cursor.value[keyPath])) &&
             (!query || self._match(query, cursor.value, keyPath, options))
@@ -321,6 +324,7 @@ IDBAdapter.prototype = {
           return cursor.continue();
         }
         _.set(options, 'idb.total', records.length);
+        _.set(options, 'idb.delayed', delayed);
         resolve(_.slice(records, offset, offset + limit));
       };
 
