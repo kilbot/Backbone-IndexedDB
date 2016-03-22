@@ -608,12 +608,12 @@ describe('Backbone IndexedDB', function () {
 
       collection.putBatch(data)
         .then(function () {
-          return collection.fetch({data: {index: 'age', filter: {q: 52}}});
+          return collection.fetch({index: 'age', data: {filter: {q: 52}}});
         })
         .then(function () {
           expect(collection).to.have.length(1);
           expect(collection.map('age')).eqls([52]);
-          return collection.fetch({data: {index: 'age', filter: {q: 2}}});
+          return collection.fetch({index: 'age', data: {filter: {q: 2}}});
         })
         .then(function () {
           expect(collection).to.have.length(2);
@@ -715,7 +715,7 @@ describe('Backbone IndexedDB', function () {
 
       collection.putBatch(data)
         .then(function () {
-          return collection.fetch({data: {index: 'age', filter: {q: 52}}});
+          return collection.fetch({index: 'age', data: {filter: {q: 52}}});
         })
         .then(function(){
           expect(collection).to.have.length(2);
@@ -725,6 +725,51 @@ describe('Backbone IndexedDB', function () {
 
     });
 
+  });
+
+  it('should return the total count for a fetch query', function(done) {
+    var random = Math.floor((Math.random() * 100) + 1);
+    for(var data = [], i = 0; i < random; i++) {
+      data.push({ foo: i });
+    }
+
+    var Col = Collection.extend({
+      matchMaker: function(model, query, options){
+        if(query === 'even:true' && model[options.fields] % 2 === 0){
+          return true;
+        }
+        return this.default.matchMaker.apply(this, arguments);
+      }
+    });
+    var collection = new Col();
+
+    collection.putBatch(data)
+      .then(function(){
+        return collection.fetch({
+          add: false,
+          error: done,
+          success: function(col, resp, options){
+            expect(col).to.have.length(0);
+            expect(resp).to.have.length(10);
+            expect(options.idb.total).eqls(random);
+
+            col.fetch({
+              data: {
+                filter: {
+                  q: 'even:true',
+                  fields: 'foo'
+                }
+              },
+              error: done,
+              success: function(c, r, opts){
+                expect(c).to.have.length(10);
+                expect(opts.idb.total).eqls(Math.ceil(random/2));
+                done();
+              }
+            });
+          }
+        });
+      });
   });
 
   /**
@@ -794,21 +839,6 @@ describe('Backbone IndexedDB', function () {
   //    })
   //    .catch(done);
   //});
-
-  describe('IDBAdapter', function(){
-
-    it('should have a hasGetParams method', function(){
-      var collection = new Collection();
-      expect(collection.db).respondsTo('hasGetParams');
-      expect(collection.db.hasGetParams()).to.be.false;
-      expect(collection.db.hasGetParams({page: 2})).to.be.true;
-      expect(collection.db.hasGetParams({fields: ['id', '_state']})).to.be.true;
-      expect(collection.db.hasGetParams({filter: {limit: -1}})).to.be.false;
-      expect(collection.db.hasGetParams({filter: {limit: -1, in: [1,2,3]}})).to.be.true;
-      expect(collection.db.hasGetParams({filter: {in: [1,2,3]}})).to.be.true;
-    });
-
-  });
 
   after(function( done ) {
     var indexedDB = window.indexedDB;
