@@ -2,6 +2,7 @@ var bb = require('backbone');
 
 /* jshint -W074 */
 module.exports = function(method, entity, options) {
+  options = options || {};
   var isModel = entity instanceof bb.Model;
 
   return entity.db.open()
@@ -9,7 +10,8 @@ module.exports = function(method, entity, options) {
       switch (method) {
         case 'read':
           if (isModel) {
-            return entity.db.get(entity.id);
+            var key = options.index ? entity.get(options.index) : entity.id;
+            return entity.db.get(key, options);
           }
           return entity.db.getBatch(options);
         case 'create':
@@ -24,7 +26,8 @@ module.exports = function(method, entity, options) {
             });
         case 'delete':
           if (isModel) {
-            return entity.db.delete(entity.id);
+            var key = options.index ? entity.get(options.index) : entity.id;
+            return entity.db.delete(key, options);
           }
           return;
       }

@@ -735,7 +735,7 @@ describe('Backbone IndexedDB', function () {
 
     var Col = Collection.extend({
       matchMaker: function(model, query, options){
-        if(query === 'even:true' && model[options.fields] % 2 === 0){
+        if(query === 'even:true' && model[options.fields] % 2 == 0){
           return true;
         }
         return this.default.matchMaker.apply(this, arguments);
@@ -763,13 +763,49 @@ describe('Backbone IndexedDB', function () {
               error: done,
               success: function(c, r, opts){
                 expect(c).to.have.length(10);
-                expect(opts.idb.total).eqls(Math.ceil(random/2));
+                var evens = _.remove(_.range(random), function(n) {
+                  return n % 2 == 0;
+                });
+                expect(opts.idb.total).eqls(evens.length);
                 done();
               }
             });
           }
         });
       });
+  });
+
+  it('should fetch a model by index', function(done){
+    var IndexedCollection = Collection.extend({
+      indexes: [
+        {name: 'age', keyPath: 'age'}
+      ],
+    });
+    var collection = new IndexedCollection();
+    var data = {
+      firstname: 'John',
+      lastname: 'Doe',
+      age: 52,
+      email: 'johndoe@example.com'
+    }
+
+    collection.create(data, {
+      error: done,
+      success: function( model, response, options ) {
+        collection.reset();
+        expect(collection).to.have.length(0);
+        var model = collection.add({age: 52});
+        model.fetch({
+          index: 'age',
+          error: done,
+          success: function(model, response, options){
+            expect(collection).to.have.length(1);
+            expect(model.toJSON()).contains(data);
+            done();
+          }
+        });
+      }
+    });
   });
 
   /**
