@@ -7,6 +7,7 @@ var is_safari = window.navigator.userAgent.indexOf('Safari') !== -1 &&
   window.navigator.userAgent.indexOf('Android') === -1;
 
 var indexedDB = window.indexedDB;
+var IDBKeyRange = window.IDBKeyRange;
 
 var consts = {
   'READ_ONLY'         : 'readonly',
@@ -278,9 +279,13 @@ IDBAdapter.prototype = {
         query       = _.get(options, ['data', 'filter', 'q']),
         keyPath     = options.index || this.opts.keyPath,
         page        = _.get(options, ['data', 'page']),
-        self        = this;
+        self        = this,
+        range       = null;
 
     if (_.isObject(keyPath)) {
+      if(keyPath.value){
+        range = IDBKeyRange.only(keyPath.value);
+      }
       keyPath = keyPath.keyPath;
     }
 
@@ -295,7 +300,7 @@ IDBAdapter.prototype = {
     return new Promise(function (resolve, reject) {
       var records = [], delayed = 0;
       var request = (keyPath === self.opts.keyPath) ?
-        objectStore.openCursor() : objectStore.index(keyPath).openCursor();
+        objectStore.openCursor() : objectStore.index(keyPath).openCursor(range);
 
       request.onsuccess = function (event) {
         var cursor = event.target.result;

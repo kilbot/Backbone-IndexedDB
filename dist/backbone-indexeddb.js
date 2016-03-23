@@ -220,6 +220,7 @@
 	  window.navigator.userAgent.indexOf('Android') === -1;
 
 	var indexedDB = window.indexedDB;
+	var IDBKeyRange = window.IDBKeyRange;
 
 	var consts = {
 	  'READ_ONLY'         : 'readonly',
@@ -491,9 +492,13 @@
 	        query       = _.get(options, ['data', 'filter', 'q']),
 	        keyPath     = options.index || this.opts.keyPath,
 	        page        = _.get(options, ['data', 'page']),
-	        self        = this;
+	        self        = this,
+	        range       = null;
 
 	    if (_.isObject(keyPath)) {
+	      if(keyPath.value){
+	        range = IDBKeyRange.only(keyPath.value);
+	      }
 	      keyPath = keyPath.keyPath;
 	    }
 
@@ -508,7 +513,7 @@
 	    return new Promise(function (resolve, reject) {
 	      var records = [], delayed = 0;
 	      var request = (keyPath === self.opts.keyPath) ?
-	        objectStore.openCursor() : objectStore.index(keyPath).openCursor();
+	        objectStore.openCursor() : objectStore.index(keyPath).openCursor(range);
 
 	      request.onsuccess = function (event) {
 	        var cursor = event.target.result;
@@ -726,13 +731,13 @@
 	module.exports = function(method, entity, options) {
 	  options = options || {};
 	  var isModel = entity instanceof bb.Model;
+	  var key = isModel && options.index ? entity.get(options.index) : entity.id;
 
 	  return entity.db.open()
 	    .then(function () {
 	      switch (method) {
 	        case 'read':
 	          if (isModel) {
-	            var key = options.index ? entity.get(options.index) : entity.id;
 	            return entity.db.get(key, options);
 	          }
 	          return entity.db.getBatch(options);
@@ -748,7 +753,6 @@
 	            });
 	        case 'delete':
 	          if (isModel) {
-	            var key = options.index ? entity.get(options.index) : entity.id;
 	            return entity.db.delete(key, options);
 	          }
 	          return;

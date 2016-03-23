@@ -808,6 +808,37 @@ describe('Backbone IndexedDB', function () {
     });
   });
 
+  it('should fetch a models by index and key', function(done){
+    var IndexedCollection = Collection.extend({
+      indexes: [
+        {name: '_state', keyPath: '_state'}
+      ],
+    });
+    var collection = new IndexedCollection();
+    var data = [
+      {id: 1},
+      {id: 2, _state: 'READ_FAILED'},
+      {id: 3, _state: 'CREATE_FAILED'},
+      {id: 4},
+      {id: 5, _state: 'CREATE_FAILED'}
+    ];
+
+    collection.putBatch(data)
+      .then(function(){
+        return collection.fetch({
+          index: {
+            keyPath: '_state',
+            value: 'CREATE_FAILED'
+          }
+        });
+      })
+      .then(function(response){
+        expect(_.map(response, 'id')).eqls([3,5]);
+        done();
+      })
+      .catch(done);
+  });
+
   /**
    * Unit testing is not good for benchmarking
    * eg: an open console will slow indexedDB dramatically
