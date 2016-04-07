@@ -46,13 +46,9 @@
 
 	var bb = __webpack_require__(1);
 
-	var createIDBModel = __webpack_require__(2);
-	var createIDBCollection = __webpack_require__(4);
-
-	bb.sync = __webpack_require__(8);
-	bb.IDBModel = createIDBModel(bb.Model);
-	bb.IDBCollection = createIDBCollection(bb.Collection);
-	bb.IDBCollection.prototype.model = bb.IDBModel;
+	bb.sync = __webpack_require__(2);
+	bb.IDBModel = __webpack_require__(3);
+	bb.IDBCollection = __webpack_require__(4);
 
 /***/ },
 /* 1 */
@@ -64,156 +60,200 @@
 /* 2 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _ = __webpack_require__(3);
+	var bb = __webpack_require__(1);
 
-	module.exports = function(Model){
+	/* jshint -W074 */
+	module.exports = function(method, entity, options) {
+	  options = options || {};
+	  var isModel = entity instanceof bb.Model,
+	      data = options.attrsArray,
+	      db = entity.db,
+	      key;
 
-	  return Model.extend({
+	  if(isModel){
+	    db = entity.collection.db;
+	    key = options.index ? entity.get(options.index) : entity.id;
+	    data = entity.toJSON();
+	  }
 
-	    constructor: function (attributes, options) {
-	      this.db = _.get(options, ['collection', 'db']);
-	      if (!this.db) {
-	        throw Error('Model must be in an IDBCollection');
+	  return db.open()
+	    .then(function () {
+	      switch (method) {
+	        case 'create':
+	        case 'update':
+	          return db.update(data, options);
+	        case 'read':
+	          return db.read(key, options);
+	        case 'delete':
+	          return db.delete(key, options);
 	      }
-
-	      Model.apply(this, arguments);
-	    }
-
-	  });
+	    })
+	    .then(function (resp) {
+	      if (options.success) { options.success(resp); }
+	      return resp;
+	    })
+	    .catch(function (resp) {
+	      if (options.error) { options.error(resp); }
+	    });
 
 	};
+	/* jshint +W074 */
 
 /***/ },
 /* 3 */
-/***/ function(module, exports) {
+/***/ function(module, exports, __webpack_require__) {
 
-	module.exports = _;
+	var bb = __webpack_require__(1);
+
+	module.exports = bb.Model.extend({
+
+	});
 
 /***/ },
 /* 4 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var IDBAdapter = __webpack_require__(5);
-	var _ = __webpack_require__(3);
+	var IDBModel = __webpack_require__(3);
+	var _ = __webpack_require__(6);
+	var bb = __webpack_require__(1);
 
-	module.exports = function(Collection){
+	module.exports = bb.Collection.extend({
 	  
-	  return Collection.extend({
+	  model: IDBModel,
 
-	    constructor: function () {
-	      this.db = new IDBAdapter({ collection: this });
-	      Collection.apply(this, arguments);
-	    },
-	    
-	    /**
-	     * Clears the IDB storage and resets the collection
-	     */
-	    clear: function () {
-	      var self = this;
-	      return this.db.open()
-	        .then(function () {
-	          self.reset();
-	          return self.db.clear();
-	        });
-	    },
+	  constructor: function () {
+	    this.db = new IDBAdapter({ collection: this });
+	    bb.Collection.apply(this, arguments);
+	  },
 
-	    /**
-	     *
-	     */
-	    count: function () {
-	      var self = this;
-	      return this.db.open()
-	        .then(function () {
-	          return self.db.count();
-	        })
-	        .then(function (count) {
-	          self.trigger('count', count);
-	          return count;
-	        });
-	    },
+	  /**
+	   *
+	   */
+	  /* jshint -W071, -W074 */
+	  save: function(models, options){
+	    options = options || {};
+	    var collection = this;
+	    var wait = options.wait;
+	    var setAttrs = options.set !== false;
+	    var success = options.success;
 
-	    /**
-	     *
-	     */
-	    putBatch: function (models, options) {
-	      options = options || {};
-	      var self = this;
-	      if (_.isEmpty(models)) {
-	        models = this.getChangedModels();
-	      }
-	      if (!models) {
-	        return;
-	      }
-	      return this.db.open()
-	        .then(function () {
-	          return self.db.putBatch(models, options);
-	        });
-	    },
-
-	    /**
-	     *
-	     */
-	    getBatch: function (keyArray, options) {
-	      var self = this;
-	      return this.db.open()
-	        .then(function () {
-	          return self.db.getBatch(keyArray, options);
-	        });
-	    },
-
-	    /**
-	     *
-	     */
-	    findHighestIndex: function (keyPath, options) {
-	      var self = this;
-	      return this.db.open()
-	        .then(function () {
-	          return self.db.findHighestIndex(keyPath, options);
-	        });
-	    },
-
-	    /**
-	     *
-	     */
-	    getChangedModels: function () {
-	      return this.filter(function (model) {
-	        return model.isNew() || model.hasChanged();
-	      });
-	    },
-
-	    /**
-	     *
-	     */
-	    removeBatch: function (models, options) {
-	      options = options || {};
-	      var self = this;
-	      if (_.isEmpty(models)) {
-	        return;
-	      }
-	      return this.db.open()
-	        .then(function () {
-	          return self.db.removeBatch(models);
-	        })
-	        .then(function () {
-	          self.remove(models);
-	          if (options.success) {
-	            options.success(self, models, options);
-	          }
-	          return models;
-	        });
+	    if(models === null){
+	      models = this.getChangedModels();
 	    }
 
-	  });
-	  
-	};
+	    var attrsArray = _.map(models, function(model){
+	      return model instanceof bb.Model ? model.toJSON() : model;
+	    });
+
+	    if(!wait && setAttrs){
+	      this.set(attrsArray, options);
+	    }
+
+	    options.success = function(resp) {
+	      var serverAttrs = options.parse ? collection.parse(resp, options) : resp;
+	      if (wait) { serverAttrs = _.extend({}, attrsArray, serverAttrs); }
+	      if (serverAttrs && setAttrs) { collection.set(serverAttrs, options); }
+	      if (success) { success.call(options.context, collection, resp, options); }
+	      collection.trigger('sync', collection, resp, options);
+	    };
+
+	    return this.sync('update', this, _.extend(options, {attrsArray: attrsArray}));
+	  },
+	  /* jshint +W071, +W074 */
+
+	  /**
+	   *
+	   */
+	  /* jshint -W071 */
+	  fetch: function(options){
+	    options = _.extend({parse: true}, options);
+	    var setAttrs = options.set !== false;
+	    var success = options.success;
+	    var collection = this;
+
+	    if(this.pageSize){
+	      var limit = _.get(options, ['data', 'filter', 'limit']);
+	      if(!limit) { _.set(options, 'data.filter.limit', this.pageSize); }
+	    }
+
+	    options.success = function(resp) {
+	      var method = options.reset ? 'reset' : 'set';
+	      if (setAttrs) { collection[method](resp, options); }
+	      if (success) { success.call(options.context, collection, resp, options); }
+	      collection.trigger('sync', collection, resp, options);
+	    };
+	    return this.sync('read', this, options);
+	  },
+	  /* jshint +W071 */
+
+	  /**
+	   * Clears the IDB storage and resets the collection
+	   */
+	  clear: function () {
+	    var self = this;
+	    return this.db.open()
+	      .then(function () {
+	        self.reset();
+	        return self.db.clear();
+	      });
+	  },
+
+	  /**
+	   *
+	   */
+	  count: function () {
+	    var self = this;
+	    return this.db.open()
+	      .then(function () {
+	        return self.db.count();
+	      })
+	      .then(function (count) {
+	        self.trigger('count', count);
+	        return count;
+	      });
+	  },
+
+	  /**
+	   *
+	   */
+	  getChangedModels: function () {
+	    return this.filter(function (model) {
+	      return model.isNew() || model.hasChanged();
+	    });
+	  },
+
+	  /**
+	   *
+	   */
+	  removeBatch: function (models, options) {
+	    options = options || {};
+	    var self = this;
+	    if (_.isEmpty(models)) {
+	      return;
+	    }
+	    return this.db.open()
+	      .then(function () {
+	        return self.db.removeBatch(models);
+	      })
+	      .then(function () {
+	        self.remove(models);
+	        if (options.success) {
+	          options.success(self, models, options);
+	        }
+	        return models;
+	      });
+	  }
+
+	});
 
 /***/ },
 /* 5 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jshint -W071, -W074 */
-	var _ = __webpack_require__(3);
-	var matchMaker = __webpack_require__(6);
+	var _ = __webpack_require__(6);
+	var matchMaker = __webpack_require__(7);
 
 	var is_safari = window.navigator.userAgent.indexOf('Safari') !== -1 &&
 	  window.navigator.userAgent.indexOf('Chrome') === -1 &&
@@ -249,7 +289,6 @@
 	    keyPath      : 'id',
 	    autoIncrement: true,
 	    indexes      : [],
-	    pageSize     : 10,
 	    matchMaker   : matchMaker,
 	    onerror      : function (options) {
 	      options = options || {};
@@ -276,12 +315,12 @@
 	          self.count()
 	            .then(function () {
 	              if (is_safari) {
-	                return self.findHighestIndex();
+	                return self.getBatch(null, { data: { filter: { limit: 1, order: 'DESC' } } });
 	              }
 	            })
-	            .then(function (key) {
-	              if (is_safari) {
-	                self.highestKey = key || 0;
+	            .then(function (resp) {
+	              if(is_safari){
+	                self.highestKey = _.isEmpty(resp) ? 0 : resp[0][self.opts.keyPath];
 	              }
 	              resolve(self.db);
 	            });
@@ -312,6 +351,25 @@
 	    this.db = undefined;
 	    this._open = undefined;
 	  },
+
+	  read: function(key, options){
+	    var get = key ? this.get : this.getBatch;
+	    return get.call(this, key, options);
+	  },
+
+	  update: function(data, options){
+	    var put = _.isArray(data) ? this.putBatch : this.put;
+	    var get = _.isArray(data) ? this.getBatch : this.get;
+	    var self = this;
+	    return put.call(this, data, options)
+	      .then(function (resp) {
+	        return get.call(self, resp);
+	      });
+	  },
+
+	  // delete: function(data, options){
+	  //
+	  // },
 
 	  getTransaction: function (access) {
 	    return this.db.transaction([this.opts.storeName], access);
@@ -480,20 +538,20 @@
 	  },
 
 	  getBatch: function (keyArray, options) {
-	    if (!options && !_.isArray(keyArray)) {
-	      options = keyArray;
-	    }
 	    options = options || {};
 
 	    var objectStore = options.objectStore || this.getObjectStore(consts.READ_ONLY),
 	        include     = _.isArray(keyArray) ? keyArray : _.get(options, ['data', 'filter', 'in']),
-	        limit       = _.get(options, ['data', 'filter', 'limit'], this.opts.pageSize),
-	        offset      = _.get(options, ['data', 'filter', 'offset'], 0),
+	        limit       = _.get(options, ['data', 'filter', 'limit'], -1),
+	        start       = _.get(options, ['data', 'filter', 'offset'], 0),
+	        order       = _.get(options, ['data', 'filter', 'order'], 'ASC'),
+	        direction   = order === 'DESC' ? consts.PREV : consts.NEXT,
 	        query       = _.get(options, ['data', 'filter', 'q']),
 	        keyPath     = options.index || this.opts.keyPath,
 	        page        = _.get(options, ['data', 'page']),
 	        self        = this,
-	        range       = null;
+	        range       = null,
+	        end;
 
 	    if (_.isObject(keyPath)) {
 	      if(keyPath.value){
@@ -502,18 +560,15 @@
 	      keyPath = keyPath.keyPath;
 	    }
 
-	    if (limit === -1) {
-	      limit = Infinity;
-	    }
-
-	    if (page) {
-	      offset = (page - 1) * limit;
+	    if (page && limit !== -1) {
+	      start = (page - 1) * limit;
 	    }
 
 	    return new Promise(function (resolve, reject) {
 	      var records = [], delayed = 0;
 	      var request = (keyPath === self.opts.keyPath) ?
-	        objectStore.openCursor() : objectStore.index(keyPath).openCursor(range);
+	        objectStore.openCursor(range, direction) :
+	        objectStore.index(keyPath).openCursor(range, direction);
 
 	      request.onsuccess = function (event) {
 	        var cursor = event.target.result;
@@ -531,7 +586,8 @@
 	        }
 	        _.set(options, 'idb.total', records.length);
 	        _.set(options, 'idb.delayed', delayed);
-	        resolve(_.slice(records, offset, offset + limit));
+	        end = limit !== -1 ? start + limit : records.length;
+	        resolve(_.slice(records, start, end));
 	      };
 
 	      request.onerror = function (event) {
@@ -560,31 +616,6 @@
 	    });
 	  },
 
-	  findHighestIndex: function (keyPath, options) {
-	    options = options || {};
-	    var self = this, objectStore = options.objectStore || this.getObjectStore(consts.READ_ONLY);
-
-	    return new Promise(function (resolve, reject) {
-	      var request;
-	      if (keyPath) {
-	        var openIndex = objectStore.index(keyPath);
-	        request = openIndex.openCursor(null, consts.PREV);
-	      } else {
-	        request = objectStore.openCursor(null, consts.PREV);
-	      }
-
-	      request.onsuccess = function (event) {
-	        var value = _.get(event, ['target', 'result', 'key']);
-	        resolve(value);
-	      };
-
-	      request.onerror = function (event) {
-	        options._error = {event: event, message: 'find highest key error', callback: reject};
-	        self.opts.onerror(options);
-	      };
-	    });
-	  },
-
 	  _match: function (query, json, keyPath, options) {
 	    var fields = _.get(options, ['data', 'filter', 'fields'], keyPath);
 	    return this.opts.matchMaker.call(this, json, query, {fields: fields});
@@ -597,10 +628,16 @@
 
 /***/ },
 /* 6 */
+/***/ function(module, exports) {
+
+	module.exports = _;
+
+/***/ },
+/* 7 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _ = __webpack_require__(3);
-	var match = __webpack_require__(7);
+	var _ = __webpack_require__(6);
+	var match = __webpack_require__(8);
 
 	var defaults = {
 	  fields: ['title'] // json property to use for simple string search
@@ -672,10 +709,10 @@
 	};
 
 /***/ },
-/* 7 */
+/* 8 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _ = __webpack_require__(3);
+	var _ = __webpack_require__(6);
 
 	var toType = function(obj){
 	  return ({}).toString.call(obj).match(/\s([a-z|A-Z]+)/)[1].toLowerCase();
@@ -720,58 +757,6 @@
 	    return match[type](haystack, needle, opts);
 	  }
 	};
-
-/***/ },
-/* 8 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var bb = __webpack_require__(1);
-
-	/* jshint -W074 */
-	module.exports = function(method, entity, options) {
-	  options = options || {};
-	  var isModel = entity instanceof bb.Model;
-	  var key = isModel && options.index ? entity.get(options.index) : entity.id;
-
-	  return entity.db.open()
-	    .then(function () {
-	      switch (method) {
-	        case 'read':
-	          if (isModel) {
-	            return entity.db.get(key, options);
-	          }
-	          return entity.db.getBatch(options);
-	        case 'create':
-	          return entity.db.add(entity.toJSON())
-	            .then(function (key) {
-	              return entity.db.get(key);
-	            });
-	        case 'update':
-	          return entity.db.put(entity.toJSON())
-	            .then(function (key) {
-	              return entity.db.get(key);
-	            });
-	        case 'delete':
-	          if (isModel) {
-	            return entity.db.delete(key, options);
-	          }
-	          return;
-	      }
-	    })
-	    .then(function (resp) {
-	      if (options.success) {
-	        options.success(resp);
-	      }
-	      return resp;
-	    })
-	    .catch(function (resp) {
-	      if (options.error) {
-	        options.error(resp);
-	      }
-	    });
-
-	};
-	/* jshint +W074 */
 
 /***/ }
 /******/ ]);

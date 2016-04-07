@@ -61,7 +61,7 @@ describe('Backbone IndexedDB', function () {
     }, {
       wait: true,
       error: done,
-      success: function( model, reposonse, options ){
+      success: function( model, response, options ){
         model.save({ age: 54 }, {
           special: true,
           error: done,
@@ -100,24 +100,6 @@ describe('Backbone IndexedDB', function () {
             done();
           }
         });
-      }
-    });
-  });
-
-  it('should trigger fetch error arguments', function (done) {
-    var collection = new Collection();
-    var keyPath = collection.db.opts.keyPath;
-    var model = {};
-    model[keyPath] = null;
-    model = collection.add(model);
-    model.fetch({
-      special: true,
-      success: done,
-      error: function(m, resp, opts){
-        expect(m).to.eql(model);
-        expect(resp).to.be.instanceOf(window.Error);
-        expect(opts.special).to.be.true;
-        done();
       }
     });
   });
@@ -165,7 +147,7 @@ describe('Backbone IndexedDB', function () {
 
   it('should batch save a collection of models', function (done) {
     var collection = new Collection();
-    collection.putBatch([
+    collection.save([
         {
           firstname: 'Jane',
           lastname : 'Smith',
@@ -182,17 +164,61 @@ describe('Backbone IndexedDB', function () {
           age      : 28,
           email    : 'joebloggs@example.com'
         }
-      ])
+      ], {
+        special: true,
+        success: function(collection, response, options){
+          expect(collection.map('id')).eqls([1, 2, 3]);
+          expect(response).to.have.length(3);
+          expect(options.special).to.be.true;
+        }
+      })
       .then(function (records) {
-        expect(collection).to.have.length(0);
-        expect(records).eqls([1, 2, 3]);
+        expect(records).to.have.length(3);
         done();
       });
+
+    expect(collection).to.have.length(3);
+  });
+
+  it('should batch save a collection of models without updating collection', function (done) {
+    var collection = new Collection();
+    collection.save([
+        {
+          firstname: 'Jane',
+          lastname : 'Smith',
+          age      : 35,
+          email    : 'janesmith@example.com'
+        }, {
+          firstname: 'John',
+          lastname : 'Doe',
+          age      : 52,
+          email    : 'johndoe@example.com'
+        }, {
+          firstname: 'Joe',
+          lastname : 'Bloggs',
+          age      : 28,
+          email    : 'joebloggs@example.com'
+        }
+      ], {
+        special: true,
+        set: false,
+        success: function(collection, response, options){
+          expect(collection).to.have.length(0);
+          expect(response).to.have.length(3);
+          expect(options.special).to.be.true;
+        }
+      })
+      .then(function (records) {
+        expect(records).to.have.length(3);
+        done();
+      });
+
+    expect(collection).to.have.length(0);
   });
 
   it('should count indexeddb records', function (done) {
     var collection = new Collection();
-    collection.putBatch([
+    collection.save([
         {
           firstname: 'Jane',
           lastname: 'Smith',
@@ -229,8 +255,10 @@ describe('Backbone IndexedDB', function () {
     });
     var collection = new Col();
 
-    collection.putBatch(data)
-      .then(function(){
+    collection.save(data, { set: false })
+      .then(function(response){
+        expect( response ).to.have.length( 100 );
+
         collection.fetch({
           special: true,
           error: done,
@@ -253,9 +281,11 @@ describe('Backbone IndexedDB', function () {
     });
     var collection = new Col();
 
-    collection.putBatch(data)
-      .then(function(){
+    collection.save(data, { set: false })
+      .then(function( response ){
+        expect( response ).to.have.length( 100 );
         var random = Math.floor((Math.random() * 100) + 1);
+
         collection.fetch({
           data: {
             filter: {
@@ -300,15 +330,15 @@ describe('Backbone IndexedDB', function () {
     });
 
     var collection = new DualCollection();
-    collection.putBatch([{id: 266}, {id: 8345}, {id: 2346}])
+    collection.save([{id: 266}, {id: 8345}, {id: 2346}], { set: false })
       .then(function () {
-        return collection.putBatch(
+        return collection.save(
           [{id: 266, foo: 'bar'}, {id: 8345, foo: 'baz'}],
-          {index: 'id'}
+          {index: 'id', set: false }
         );
       })
       .then(function (records) {
-        expect(records).eqls([1, 2]);
+        expect(records).eqls([{id: 266, foo: 'bar', local_id: 1}, {id: 8345, foo: 'baz', local_id: 2}]);
 
         collection.fetch({
           error  : done,
@@ -339,11 +369,12 @@ describe('Backbone IndexedDB', function () {
     });
 
     var collection = new DualCollection();
-    collection.putBatch([ { id: 11 }, { id: 12 }, { id: 13 } ])
+    collection.save([ { id: 11 }, { id: 12 }, { id: 13 } ], { set: false })
       .then( function( records ) {
-        return collection.putBatch(
+        return collection.save(
           [{id: 11, foo: 'bar'}, {id: 12, foo: 'baz'}, {id: 14, foo: 'boo'}],
           {
+            set: false,
             index: {
               keyPath: 'id',
               merge  : function (local, remote, primaryKey) {
@@ -371,7 +402,6 @@ describe('Backbone IndexedDB', function () {
             done();
           }
         })
-
       })
       .catch(done);
 
@@ -379,7 +409,7 @@ describe('Backbone IndexedDB', function () {
 
   it('should clear a collection', function (done) {
     var collection = new Collection();
-    collection.putBatch([
+    collection.save([
         {
           firstname: 'Jane',
           lastname: 'Smith',
@@ -397,8 +427,7 @@ describe('Backbone IndexedDB', function () {
           email: 'joebloggs@example.com'
         }
       ])
-      .then( function( records ) {
-        collection.add(records);
+      .then( function() {
         expect( collection ).to.have.length( 3 );
         collection.clear()
           .then(function(){
@@ -420,7 +449,7 @@ describe('Backbone IndexedDB', function () {
     });
     var collection = new IndexedCollection();
 
-    collection.putBatch([
+    collection.save([
       {
         firstname: 'Jane',
         lastname: 'Smith',
@@ -439,10 +468,19 @@ describe('Backbone IndexedDB', function () {
       }
     ])
     .then(function(){
-      return collection.db.findHighestIndex('age');
+      return collection.fetch({
+        index: 'age',
+        data: {
+          filter: {
+            limit: 1,
+            order: 'DESC'
+          }
+        }
+      });
     })
     .then(function(response){
-      expect(response).equals(52);
+      expect(response).to.have.length(1);
+      expect(response[0].age).equals(52);
       done();
     });
   });
@@ -455,7 +493,7 @@ describe('Backbone IndexedDB', function () {
 
     var collection = new Collection();
 
-    collection.putBatch(data)
+    collection.save(data)
       .then(function() {
         expect(collection.db.length).equals(0);
         collection.db.close();
@@ -471,58 +509,17 @@ describe('Backbone IndexedDB', function () {
       });
   });
 
-  it('should have a getBatch convenience function', function(done){
-    var IndexedCollection = Collection.extend({
-      indexes: [
-        {name: 'age', keyPath: 'age'}
-      ],
-    });
-    var collection = new IndexedCollection();
-
-    var data = [
-      {
-        firstname: 'Jane',
-        lastname: 'Smith',
-        age: 35,
-        email: 'janesmith@example.com'
-      }, {
-        firstname: 'John',
-        lastname: 'Doe',
-        age: 52,
-        email: 'johndoe@example.com'
-      }, {
-        firstname: 'Joe',
-        lastname: 'Bloggs',
-        age: 28,
-        email: 'joebloggs@example.com'
-      }
-    ];
-
-    collection.putBatch(data)
-      .then(function(local_ids){
-        return collection.getBatch(local_ids);
-      })
-      .then(function(response){
-        expect(response).to.have.length(3);
-      })
-      .then(function(){
-        return collection.getBatch([35, 28], {index: 'age'});
-      })
-      .then(function(response){
-        expect(response).to.have.length(2);
-        done();
-      })
-      .catch(done);
-  });
-
   it('should fetch paginated and offset requests', function(done){
     for(var data = [], i = 0; i < 50; i++) {
       data.push({ foo: i });
     }
 
-    var collection = new Collection();
+    var Col = Collection.extend({
+      pageSize: 10
+    });
+    var collection = new Col();
 
-    collection.putBatch(data)
+    collection.save(data, { set: false })
       .then(function(){
         return collection.fetch({ data: { page: 1 } });
       })
@@ -551,9 +548,12 @@ describe('Backbone IndexedDB', function () {
         data.push({foo: i});
       }
 
-      var collection = new Collection();
+      var Col = Collection.extend({
+        pageSize: 10
+      });
+      var collection = new Col();
 
-      collection.putBatch(data)
+      collection.save(data, { set: false })
         .then(function () {
           return collection.fetch({data: {filter: {q: 17}}});
         })
@@ -606,7 +606,7 @@ describe('Backbone IndexedDB', function () {
         }
       ];
 
-      collection.putBatch(data)
+      collection.save(data, { set: false })
         .then(function () {
           return collection.fetch({index: 'age', data: {filter: {q: 52}}});
         })
@@ -645,7 +645,7 @@ describe('Backbone IndexedDB', function () {
         }
       ];
 
-      collection.putBatch(data)
+      collection.save(data, { set: false })
         .then(function () {
           return collection.fetch({
             data: {
@@ -713,7 +713,7 @@ describe('Backbone IndexedDB', function () {
         }
       ];
 
-      collection.putBatch(data)
+      collection.save(data, { set: false })
         .then(function () {
           return collection.fetch({index: 'age', data: {filter: {q: 52}}});
         })
@@ -728,12 +728,13 @@ describe('Backbone IndexedDB', function () {
   });
 
   it('should return the total count for a fetch query', function(done) {
-    var random = Math.floor((Math.random() * 100) + 1);
+    var random = Math.ceil((Math.random() * 100));
     for(var data = [], i = 0; i < random; i++) {
       data.push({ foo: i });
     }
 
     var Col = Collection.extend({
+      pageSize: 10,
       matchMaker: function(model, query, options){
         if(query === 'even:true' && model[options.fields] % 2 == 0){
           return true;
@@ -743,14 +744,14 @@ describe('Backbone IndexedDB', function () {
     });
     var collection = new Col();
 
-    collection.putBatch(data)
+    collection.save(data, { set: false })
       .then(function(){
         return collection.fetch({
           add: false,
           error: done,
           success: function(col, resp, options){
             expect(col).to.have.length(0);
-            expect(resp).to.have.length(10);
+            expect(resp.length).to.be.at.most(10);
             expect(options.idb.total).eqls(random);
 
             col.fetch({
@@ -762,7 +763,7 @@ describe('Backbone IndexedDB', function () {
               },
               error: done,
               success: function(c, r, opts){
-                expect(c).to.have.length(10);
+                expect(c.length).to.be.at.most(10);
                 var evens = _.remove(_.range(random), function(n) {
                   return n % 2 == 0;
                 });
@@ -823,7 +824,7 @@ describe('Backbone IndexedDB', function () {
       {id: 5, _state: 'CREATE_FAILED'}
     ];
 
-    collection.putBatch(data)
+    collection.save(data, { set: false })
       .then(function(){
         return collection.fetch({
           index: {

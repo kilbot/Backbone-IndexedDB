@@ -1,18 +1,5 @@
-var _ = require('lodash');
+var bb = require('backbone');
 
-module.exports = function(Model){
+module.exports = bb.Model.extend({
 
-  return Model.extend({
-
-    constructor: function (attributes, options) {
-      this.db = _.get(options, ['collection', 'db']);
-      if (!this.db) {
-        throw Error('Model must be in an IDBCollection');
-      }
-
-      Model.apply(this, arguments);
-    }
-
-  });
-
-};
+});
