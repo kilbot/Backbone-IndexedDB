@@ -133,10 +133,10 @@
 	  /* jshint -W071, -W074 */
 	  save: function(models, options){
 	    options = options || {};
-	    var collection = this;
-	    var wait = options.wait;
-	    var setAttrs = options.set !== false;
-	    var success = options.success;
+	    var collection = this,
+	        wait = options.wait,
+	        success = options.success,
+	        setAttrs = options.set !== false;
 
 	    if(models === null){
 	      models = this.getChangedModels();
@@ -168,9 +168,9 @@
 	  /* jshint -W071 */
 	  fetch: function(options){
 	    options = _.extend({parse: true}, options);
-	    var setAttrs = options.set !== false;
-	    var success = options.success;
-	    var collection = this;
+	    var setAttrs = options.set !== false,
+	        success = options.success,
+	        collection = this;
 
 	    if(this.pageSize){
 	      var limit = _.get(options, ['data', 'filter', 'limit']);
@@ -188,15 +188,22 @@
 	  /* jshint +W071 */
 
 	  /**
-	   * Clears the IDB storage and resets the collection
+	   *
 	   */
-	  clear: function () {
-	    var self = this;
-	    return this.db.open()
-	      .then(function () {
-	        self.reset();
-	        return self.db.clear();
-	      });
+	  destroy: function(options){
+	    options = options || {};
+	    var collection = this,
+	        wait = options.wait,
+	        success = options.success;
+	        
+	    options.success = function(resp) {
+	      if (wait) { collection.reset(); }
+	      if (success) { success.call(options.context, collection, resp, options); }
+	      collection.trigger('sync', collection, resp, options);
+	    };
+
+	    if(!wait) { collection.reset(); }
+	    return this.sync('delete', this, options);
 	  },
 
 	  /**
@@ -221,28 +228,6 @@
 	    return this.filter(function (model) {
 	      return model.isNew() || model.hasChanged();
 	    });
-	  },
-
-	  /**
-	   *
-	   */
-	  removeBatch: function (models, options) {
-	    options = options || {};
-	    var self = this;
-	    if (_.isEmpty(models)) {
-	      return;
-	    }
-	    return this.db.open()
-	      .then(function () {
-	        return self.db.removeBatch(models);
-	      })
-	      .then(function () {
-	        self.remove(models);
-	        if (options.success) {
-	          options.success(self, models, options);
-	        }
-	        return models;
-	      });
 	  }
 
 	});
@@ -367,9 +352,10 @@
 	      });
 	  },
 
-	  // delete: function(data, options){
-	  //
-	  // },
+	  delete: function(key, options){
+	    var remove = key ? this.remove : this.removeBatch;
+	    return remove.call(this, key, options);
+	  },
 
 	  getTransaction: function (access) {
 	    return this.db.transaction([this.opts.storeName], access);
@@ -474,7 +460,7 @@
 	    });
 	  },
 
-	  delete: function (key, options) {
+	  remove: function (key, options) {
 	    options = options || {};
 	    var self = this, objectStore = options.objectStore || this.getObjectStore(consts.READ_WRITE);
 
@@ -595,6 +581,10 @@
 	        self.opts.onerror(options);
 	      };
 	    });
+	  },
+
+	  removeBatch: function(keyArray, options) {
+	    return this.clear(options);
 	  },
 
 	  clear: function (options) {

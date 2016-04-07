@@ -114,9 +114,10 @@ IDBAdapter.prototype = {
       });
   },
 
-  // delete: function(data, options){
-  //
-  // },
+  delete: function(key, options){
+    var remove = key ? this.remove : this.removeBatch;
+    return remove.call(this, key, options);
+  },
 
   getTransaction: function (access) {
     return this.db.transaction([this.opts.storeName], access);
@@ -221,7 +222,7 @@ IDBAdapter.prototype = {
     });
   },
 
-  delete: function (key, options) {
+  remove: function (key, options) {
     options = options || {};
     var self = this, objectStore = options.objectStore || this.getObjectStore(consts.READ_WRITE);
 
@@ -342,6 +343,10 @@ IDBAdapter.prototype = {
         self.opts.onerror(options);
       };
     });
+  },
+
+  removeBatch: function(keyArray, options) {
+    return this.clear(options);
   },
 
   clear: function (options) {

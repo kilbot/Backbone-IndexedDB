@@ -407,7 +407,7 @@ describe('Backbone IndexedDB', function () {
 
   });
 
-  it('should clear a collection', function (done) {
+  it('should destroy a collection', function (done) {
     var collection = new Collection();
     collection.save([
         {
@@ -429,7 +429,7 @@ describe('Backbone IndexedDB', function () {
       ])
       .then( function() {
         expect( collection ).to.have.length( 3 );
-        collection.clear()
+        collection.destroy()
           .then(function(){
             expect( collection ).to.have.length( 0 );
             collection.count()
@@ -501,7 +501,7 @@ describe('Backbone IndexedDB', function () {
       })
       .then(function () {
         expect(collection.db.length).equals(random);
-        return collection.clear()
+        return collection.destroy()
       })
       .then(function () {
         expect(collection.db.length).equals(0);
