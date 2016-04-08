@@ -37,7 +37,6 @@ module.exports = bb.Collection.extend({
 
     options.success = function(resp) {
       var serverAttrs = options.parse ? collection.parse(resp, options) : resp;
-      if (wait) { serverAttrs = _.extend({}, attrsArray, serverAttrs); }
       if (serverAttrs && setAttrs) { collection.set(serverAttrs, options); }
       if (success) { success.call(options.context, collection, resp, options); }
       collection.trigger('sync', collection, resp, options);
@@ -46,31 +45,6 @@ module.exports = bb.Collection.extend({
     return this.sync('update', this, _.extend(options, {attrsArray: attrsArray}));
   },
   /* jshint +W071, +W074 */
-
-  /**
-   *
-   */
-  /* jshint -W071 */
-  fetch: function(options){
-    options = _.extend({parse: true}, options);
-    var setAttrs = options.set !== false,
-        success = options.success,
-        collection = this;
-
-    if(this.pageSize){
-      var limit = _.get(options, ['data', 'filter', 'limit']);
-      if(!limit) { _.set(options, 'data.filter.limit', this.pageSize); }
-    }
-
-    options.success = function(resp) {
-      var method = options.reset ? 'reset' : 'set';
-      if (setAttrs) { collection[method](resp, options); }
-      if (success) { success.call(options.context, collection, resp, options); }
-      collection.trigger('sync', collection, resp, options);
-    };
-    return this.sync('read', this, options);
-  },
-  /* jshint +W071 */
 
   /**
    *

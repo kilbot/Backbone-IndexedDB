@@ -245,41 +245,12 @@ describe('Backbone IndexedDB', function () {
       });
   });
 
-  it('should fetch \'collection.pageSize\' records by default', function(done){
-    for(var data = [], i = 0; i < 100; i++) {
-      data.push({ foo: i });
-    }
-
-    var Col = Collection.extend({
-      pageSize: Math.floor((Math.random() * 100) + 1)
-    });
-    var collection = new Col();
-
-    collection.save(data, { set: false })
-      .then(function(response){
-        expect( response ).to.have.length( 100 );
-
-        collection.fetch({
-          special: true,
-          error: done,
-          success: function(collection, response, options){
-            expect( collection ).to.have.length( collection.pageSize );
-            expect( options.special).to.be.true;
-            done();
-          }
-        })
-      });
-  });
-
   it('should fetch \'filter[limit]\' records', function(done){
     for(var data = [], i = 0; i < 100; i++) {
       data.push({ foo: i });
     }
 
-    var Col = Collection.extend({
-      pageSize: Math.floor((Math.random() * 100) + 1)
-    });
-    var collection = new Col();
+    var collection = new Collection();
 
     collection.save(data, { set: false })
       .then(function( response ){
@@ -514,24 +485,21 @@ describe('Backbone IndexedDB', function () {
       data.push({ foo: i });
     }
 
-    var Col = Collection.extend({
-      pageSize: 10
-    });
-    var collection = new Col();
+    var collection = new Collection();
 
     collection.save(data, { set: false })
       .then(function(){
-        return collection.fetch({ data: { page: 1 } });
+        return collection.fetch({ data: { page: 1, filter: { limit: 10 } } });
       })
       .then(function(){
         expect(collection).to.have.length(10);
         expect(collection.map('id')).eqls([1,2,3,4,5,6,7,8,9,10]);
-        return collection.fetch({ data: { page: 2 } });
+        return collection.fetch({ data: { page: 2, filter: { limit: 10 } } });
       })
       .then(function(){
         expect(collection).to.have.length(10);
         expect(collection.map('id')).eqls([11,12,13,14,15,16,17,18,19,20]);
-        return collection.fetch({ data: { filter: { offset: 20 } } });
+        return collection.fetch({ data: { filter: { offset: 20, limit: 10 } } });
       })
       .then(function(){
         expect(collection).to.have.length(10);
@@ -548,29 +516,26 @@ describe('Backbone IndexedDB', function () {
         data.push({foo: i});
       }
 
-      var Col = Collection.extend({
-        pageSize: 10
-      });
-      var collection = new Col();
+      var collection = new Collection();
 
       collection.save(data, { set: false })
         .then(function () {
-          return collection.fetch({data: {filter: {q: 17}}});
+          return collection.fetch({data: {filter: {q: 17, limit: 10 }}});
         })
         .then(function () {
           expect(collection).to.have.length(1);
           expect(collection.at(0).id).eqls(17);
-          return collection.fetch({data: {filter: {q: 1}}});
+          return collection.fetch({data: {filter: {q: 1, limit: 10}}});
         })
         .then(function () {
           expect(collection).to.have.length(10);
           expect(collection.map('id')).eqls([1, 10, 11, 12, 13, 14, 15, 16, 17, 18]);
-          return collection.fetch({data: {page: 2, filter: {q: 1}}});
+          return collection.fetch({data: {page: 2, filter: {q: 1, limit: 10}}});
         })
         .then(function () {
           expect(collection).to.have.length(10);
           expect(collection.map('id')).eqls([19, 21, 31, 41, 51, 61, 71, 81, 91, 100]);
-          return collection.fetch({data: {page: 3, filter: {q: 1}}});
+          return collection.fetch({data: {page: 3, filter: {q: 1, limit: 10}}});
         })
         .then(function () {
           expect(collection).to.have.length(0);
@@ -734,7 +699,6 @@ describe('Backbone IndexedDB', function () {
     }
 
     var Col = Collection.extend({
-      pageSize: 10,
       matchMaker: function(model, query, options){
         if(query === 'even:true' && model[options.fields] % 2 == 0){
           return true;
@@ -751,7 +715,6 @@ describe('Backbone IndexedDB', function () {
           error: done,
           success: function(col, resp, options){
             expect(col).to.have.length(0);
-            expect(resp.length).to.be.at.most(10);
             expect(options.idb.total).eqls(random);
 
             col.fetch({
@@ -763,7 +726,6 @@ describe('Backbone IndexedDB', function () {
               },
               error: done,
               success: function(c, r, opts){
-                expect(c.length).to.be.at.most(10);
                 var evens = _.remove(_.range(random), function(n) {
                   return n % 2 == 0;
                 });
