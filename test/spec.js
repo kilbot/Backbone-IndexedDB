@@ -802,6 +802,74 @@ describe('Backbone IndexedDB', function () {
       .catch(done);
   });
 
+  it('should batch destroy an array of keys/models', function(done){
+    var collection = new Collection();
+
+    collection.save([{id: 1}, {id: 2}, {id: 3}, {id: 4}, {id: 5}])
+      .then(function(response){
+        expect(response).to.have.length(5);
+        expect(collection).to.have.length(5);
+        return collection.destroy([2, 5]);
+      })
+      .then(function(){
+        expect(collection).to.have.length(3);
+        expect(collection.map('id')).eqls([1,3,4]);
+        return collection.count();
+      })
+      .then(function(resp){
+        expect(resp).eqls(3);
+        var models = collection.filter(function(model){
+          return model.id === 1 || model.id === 4;
+        });
+        return collection.destroy(models);
+      })
+      .then(function(){
+        expect(collection).to.have.length(1);
+        expect(collection.map('id')).eqls([3]);
+        return collection.count();
+      })
+      .then(function(resp) {
+        expect(resp).eqls(1);
+        done();
+      })
+      .catch(done);
+
+  });
+
+  it('should batch destroy with filter options', function(done){
+    var IndexedCollection = Collection.extend({
+      indexes: [
+        {name: 'age', keyPath: 'age'}
+      ],
+    });
+    var collection = new IndexedCollection();
+
+    collection.save([{age: 26}, {age: 35}, {age: 39}, {age: 14}, {age: 53}])
+      .then(function(response){
+        expect(response).to.have.length(5);
+        expect(collection).to.have.length(5);
+        return collection.destroy(null, {
+          data: {
+            filter: {
+              not_in: [ 26, 39, 53 ]
+            }
+          },
+          index: 'age'
+        });
+      })
+      .then(function(){
+        expect(collection).to.have.length(3);
+        expect(collection.map('age')).eqls([26, 39, 53]);
+        return collection.count();
+      })
+      .then(function(resp) {
+        expect(resp).eqls(3);
+        done();
+      })
+      .catch(done);
+
+  });
+
   /**
    * Unit testing is not good for benchmarking
    * eg: an open console will slow indexedDB dramatically

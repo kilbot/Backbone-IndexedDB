@@ -81,6 +81,7 @@
 	      switch (method) {
 	        case 'create':
 	        case 'update':
+	        case 'patch':
 	          return db.update(data, options);
 	        case 'read':
 	          return db.read(key, options);
@@ -123,8 +124,8 @@
 	  model: IDBModel,
 
 	  constructor: function () {
-	    this.db = new IDBAdapter({ collection: this });
 	    bb.Collection.apply(this, arguments);
+	    this.db = new IDBAdapter({ collection: this });
 	  },
 
 	  /**
@@ -159,26 +160,52 @@
 
 	    return this.sync('update', this, _.extend(options, {attrsArray: attrsArray}));
 	  },
-	  /* jshint +W071, +W074 */
 
 	  /**
 	   *
 	   */
-	  destroy: function(options){
-	    options = options || {};
+	  destroy: function(models, options){
+	    if(!options && models && !_.isArray(models)){
+	      options = models;
+	    } else {
+	      options = options || {};
+	    }
+
 	    var collection = this,
 	        wait = options.wait,
 	        success = options.success;
+
+	    options.attrsArray = _.map(models, function(model){
+	      return model instanceof bb.Model ? model.toJSON() : model;
+	    });
+
+	    if(options.data){
+	      wait = true;
+	    }
 	        
 	    options.success = function(resp) {
-	      if (wait) { collection.reset(); }
+	      if(wait && _.isEmpty(options.attrsArray) ) {
+	        collection.resetNew();
+	        collection.reset();
+	      }
+	      if(wait && !_.isEmpty(options.attrsArray)) {
+	        collection.remove(options.attrsArray);
+	      }
 	      if (success) { success.call(options.context, collection, resp, options); }
 	      collection.trigger('sync', collection, resp, options);
 	    };
 
-	    if(!wait) { collection.reset(); }
+	    if(!wait && _.isEmpty(options.attrsArray) ) {
+	      collection.reset();
+	    }
+
+	    if(!wait && !_.isEmpty(options.attrsArray)) {
+	      collection.remove(options.attrsArray);
+	    }
+
 	    return this.sync('delete', this, options);
 	  },
+	  /* jshint +W071, +W074 */
 
 	  /**
 	   *
@@ -436,10 +463,17 @@
 
 	  remove: function (key, options) {
 	    options = options || {};
-	    var self = this, objectStore = options.objectStore || this.getObjectStore(consts.READ_WRITE);
+	    var objectStore = options.objectStore || this.getObjectStore(consts.READ_WRITE),
+	        keyPath     = options.index || this.opts.keyPath,
+	        self        = this;
+
+	    if(_.isObject(key)){
+	      key = key[keyPath];
+	    }
 
 	    return new Promise(function (resolve, reject) {
-	      var request = objectStore.delete(key);
+	      var request = (keyPath === self.opts.keyPath) ?
+	        objectStore.delete(key) : objectStore.index(keyPath).delete(key);
 
 	      request.onsuccess = function (event) {
 	        resolve(event.target.result); // undefined
@@ -450,6 +484,7 @@
 	        err.code = event.target.errorCode;
 	        reject(err);
 	      };
+	      
 	      request.onerror = function (event) {
 	        options._error = {event: event, message: 'delete error', callback: reject};
 	        self.opts.onerror(options);
@@ -502,6 +537,7 @@
 
 	    var objectStore = options.objectStore || this.getObjectStore(consts.READ_ONLY),
 	        include     = _.isArray(keyArray) ? keyArray : _.get(options, ['data', 'filter', 'in']),
+	        exclude     = _.get(options, ['data', 'filter', 'not_in']),
 	        limit       = _.get(options, ['data', 'filter', 'limit'], -1),
 	        start       = _.get(options, ['data', 'filter', 'offset'], 0),
 	        order       = _.get(options, ['data', 'filter', 'order'], 'ASC'),
@@ -538,6 +574,7 @@
 	          }
 	          if (
 	            (!include || _.includes(include, cursor.value[keyPath])) &&
+	            (!exclude || !_.includes(exclude, cursor.value[keyPath])) &&
 	            (!query || self._match(query, cursor.value, keyPath, options))
 	          ) {
 	            records.push(cursor.value);
@@ -557,8 +594,29 @@
 	    });
 	  },
 
-	  removeBatch: function(keyArray, options) {
-	    return this.clear(options);
+	  removeBatch: function(dataArray, options) {
+	    var batch = [];
+	    options = options || {};
+	    dataArray = dataArray || options.attrsArray;
+
+	    if(_.isEmpty(dataArray) && !options.data){
+	      return this.clear(options);
+	    }
+
+	    if(options.data){
+	      var self = this;
+	      return this.getBatch(null, options)
+	        .then(function(response){
+	          options.attrsArray = _.map(response, self.opts.keyPath);
+	          return self.removeBatch(options.attrsArray);
+	        });
+	    }
+
+	    _.each(dataArray, function (data) {
+	      batch.push(this.remove(data, options));
+	    }.bind(this));
+
+	    return Promise.all(batch);
 	  },
 
 	  clear: function (options) {

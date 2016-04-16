@@ -8,8 +8,8 @@ module.exports = bb.Collection.extend({
   model: IDBModel,
 
   constructor: function () {
-    this.db = new IDBAdapter({ collection: this });
     bb.Collection.apply(this, arguments);
+    this.db = new IDBAdapter({ collection: this });
   },
 
   /**
@@ -44,26 +44,52 @@ module.exports = bb.Collection.extend({
 
     return this.sync('update', this, _.extend(options, {attrsArray: attrsArray}));
   },
-  /* jshint +W071, +W074 */
 
   /**
    *
    */
-  destroy: function(options){
-    options = options || {};
+  destroy: function(models, options){
+    if(!options && models && !_.isArray(models)){
+      options = models;
+    } else {
+      options = options || {};
+    }
+
     var collection = this,
         wait = options.wait,
         success = options.success;
+
+    options.attrsArray = _.map(models, function(model){
+      return model instanceof bb.Model ? model.toJSON() : model;
+    });
+
+    if(options.data){
+      wait = true;
+    }
         
     options.success = function(resp) {
-      if (wait) { collection.reset(); }
+      if(wait && _.isEmpty(options.attrsArray) ) {
+        collection.resetNew();
+        collection.reset();
+      }
+      if(wait && !_.isEmpty(options.attrsArray)) {
+        collection.remove(options.attrsArray);
+      }
       if (success) { success.call(options.context, collection, resp, options); }
       collection.trigger('sync', collection, resp, options);
     };
 
-    if(!wait) { collection.reset(); }
+    if(!wait && _.isEmpty(options.attrsArray) ) {
+      collection.reset();
+    }
+
+    if(!wait && !_.isEmpty(options.attrsArray)) {
+      collection.remove(options.attrsArray);
+    }
+
     return this.sync('delete', this, options);
   },
+  /* jshint +W071, +W074 */
 
   /**
    *
