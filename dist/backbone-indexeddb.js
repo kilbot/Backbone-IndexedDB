@@ -47,8 +47,7 @@
 	var bb = __webpack_require__(1);
 
 	bb.sync = __webpack_require__(2);
-	bb.IDBModel = __webpack_require__(3);
-	bb.IDBCollection = __webpack_require__(4);
+	bb.IDBCollection = __webpack_require__(3);
 
 /***/ },
 /* 1 */
@@ -104,9 +103,15 @@
 /* 3 */
 /***/ function(module, exports, __webpack_require__) {
 
+	var IDBCollection = __webpack_require__(4);
 	var bb = __webpack_require__(1);
 
-	module.exports = bb.Model.extend({
+	module.exports = bb.Collection.extend({
+
+	  constructor: function (models, options) {
+	    bb.Collection.apply(this, arguments);
+	    IDBCollection(this);
+	  }
 
 	});
 
@@ -114,19 +119,11 @@
 /* 4 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var IDBAdapter = __webpack_require__(5);
-	var IDBModel = __webpack_require__(3);
-	var _ = __webpack_require__(6);
 	var bb = __webpack_require__(1);
+	var _ = __webpack_require__(5);
+	var IDBAdapter = __webpack_require__(6);
 
-	module.exports = bb.Collection.extend({
-	  
-	  model: IDBModel,
-
-	  constructor: function () {
-	    bb.Collection.apply(this, arguments);
-	    this.db = new IDBAdapter({ collection: this });
-	  },
+	var methods = {
 
 	  /**
 	   *
@@ -135,9 +132,9 @@
 	  save: function(models, options){
 	    options = options || {};
 	    var collection = this,
-	        wait = options.wait,
-	        success = options.success,
-	        setAttrs = options.set !== false;
+	      wait = options.wait,
+	      success = options.success,
+	      setAttrs = options.set !== false;
 
 	    if(models === null){
 	      models = this.getChangedModels();
@@ -172,8 +169,8 @@
 	    }
 
 	    var collection = this,
-	        wait = options.wait,
-	        success = options.success;
+	      wait = options.wait,
+	      success = options.success;
 
 	    options.attrsArray = _.map(models, function(model){
 	      return model instanceof bb.Model ? model.toJSON() : model;
@@ -182,7 +179,7 @@
 	    if(options.data){
 	      wait = true;
 	    }
-	        
+
 	    options.success = function(resp) {
 	      if(wait && _.isEmpty(options.attrsArray) ) {
 	        collection.resetNew();
@@ -230,15 +227,27 @@
 	      return model.isNew() || model.hasChanged();
 	    });
 	  }
+	};
 
-	});
+	var IDBCollection = function(collection){
+	  _.extend(collection, methods);
+	  collection.db = new IDBAdapter({ collection: collection });
+	};
+
+	module.exports = IDBCollection;
 
 /***/ },
 /* 5 */
+/***/ function(module, exports) {
+
+	module.exports = _;
+
+/***/ },
+/* 6 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jshint -W071, -W074 */
-	var _ = __webpack_require__(6);
+	var _ = __webpack_require__(5);
 	var matchMaker = __webpack_require__(7);
 
 	var is_safari = window.navigator.userAgent.indexOf('Safari') !== -1 &&
@@ -649,16 +658,10 @@
 	/* jshint +W071, +W074 */
 
 /***/ },
-/* 6 */
-/***/ function(module, exports) {
-
-	module.exports = _;
-
-/***/ },
 /* 7 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _ = __webpack_require__(6);
+	var _ = __webpack_require__(5);
 	var match = __webpack_require__(8);
 
 	var defaults = {
@@ -668,7 +671,15 @@
 	var pick = function(json, props){
 	  return _.chain(props)
 	    .map(function (key) {
-	      return _.get(json, key); // allows nested get
+	      var attr = _.get(json, key); // allows nested get
+
+	      // special case, eg: attributes: [{name: 'Size'}, {name: 'Color'}]
+	      if(attr === undefined){
+	        var keys = key.split('.');
+	        attr = _.chain(json).get(keys[0]).map(keys[1]).value();
+	      }
+
+	      return attr;
 	    })
 	    .value();
 	};
@@ -725,6 +736,7 @@
 	    filterArray = [{type: 'string', query: filterArray.toString()}];
 	  }
 
+	  // logical AND
 	  return _.every(filterArray, function (filter) {
 	    return methods[filter.type](json, filter, opts);
 	  });
@@ -734,7 +746,7 @@
 /* 8 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _ = __webpack_require__(6);
+	var _ = __webpack_require__(5);
 
 	var toType = function(obj){
 	  return ({}).toString.call(obj).match(/\s([a-z|A-Z]+)/)[1].toLowerCase();
@@ -763,17 +775,21 @@
 	    return bool.toString() === value;
 	  },
 
-	  'array': function(array, value, options){
+	  'array': function(array, value){
 	    var self = this;
 	    return _.some(array, function(elem){
 	      var type = toType(elem);
-	      return self[type](elem, value, options);
+	      return self[type](elem, value, {exact: true});
 	    });
+	  },
+
+	  'undefined': function(){
+	    // console.log(arguments);
 	  }
 	};
 
 	module.exports = function(haystack, needle, options){
-	  var opts = _.defaults({}, options, defaults);
+	  var opts = _.defaults({json: haystack}, options, defaults);
 	  var type = toType(haystack);
 	  if(match[type]){
 	    return match[type](haystack, needle, opts);

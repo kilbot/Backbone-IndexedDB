@@ -288,7 +288,7 @@ describe('Backbone IndexedDB', function () {
   });
 
   it('should merge models on a non-keyPath attribute', function (done) {
-    var Model = Backbone.IDBModel.extend({
+    var Model = Backbone.Model.extend({
       idAttribute: 'local_id'
     });
 
@@ -327,7 +327,7 @@ describe('Backbone IndexedDB', function () {
   });
 
   it('should merge models with a custom merge function', function (done) {
-    var Model = Backbone.IDBModel.extend({
+    var Model = Backbone.Model.extend({
       idAttribute: 'local_id'
     });
 
