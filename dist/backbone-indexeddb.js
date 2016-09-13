@@ -103,14 +103,14 @@
 /* 3 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var IDBCollection = __webpack_require__(4);
+	var IDBDecorator = __webpack_require__(4);
 	var bb = __webpack_require__(1);
 
 	module.exports = bb.Collection.extend({
 
-	  constructor: function (models, options) {
+	  constructor: function () {
 	    bb.Collection.apply(this, arguments);
-	    IDBCollection(this);
+	    this.db = new IDBDecorator(this);
 	  }
 
 	});
@@ -229,12 +229,10 @@
 	  }
 	};
 
-	var IDBCollection = function(collection){
+	module.exports = function (collection){
 	  _.extend(collection, methods);
-	  collection.db = new IDBAdapter({ collection: collection });
+	  return new IDBAdapter({ collection: collection });
 	};
-
-	module.exports = IDBCollection;
 
 /***/ },
 /* 5 */
