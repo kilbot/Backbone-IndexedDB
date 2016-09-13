@@ -110,5 +110,5 @@ var methods = {
 
 module.exports = function (collection){
   _.extend(collection, methods);
-  return new IDBAdapter({ collection: collection });
+  collection.db = new IDBAdapter({ collection: collection });
 };

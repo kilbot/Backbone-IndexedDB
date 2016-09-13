@@ -103,14 +103,14 @@
 /* 3 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var IDBDecorator = __webpack_require__(4);
 	var bb = __webpack_require__(1);
+	var decorate = __webpack_require__(4);
 
 	module.exports = bb.Collection.extend({
 
 	  constructor: function () {
 	    bb.Collection.apply(this, arguments);
-	    this.db = new IDBDecorator(this);
+	    decorate(this);
 	  }
 
 	});
@@ -231,7 +231,7 @@
 
 	module.exports = function (collection){
 	  _.extend(collection, methods);
-	  return new IDBAdapter({ collection: collection });
+	  collection.db = new IDBAdapter({ collection: collection });
 	};
 
 /***/ },

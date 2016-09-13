@@ -1,11 +1,11 @@
-var IDBDecorator = require('./idb-decorator');
 var bb = require('backbone');
+var decorate = require('./collection-decorator');
 
 module.exports = bb.Collection.extend({
 
   constructor: function () {
     bb.Collection.apply(this, arguments);
-    this.db = new IDBDecorator(this);
+    decorate(this);
   }
 
 });
