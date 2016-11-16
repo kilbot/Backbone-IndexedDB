@@ -1,3 +1,4 @@
+var app =
 /******/ (function(modules) { // webpackBootstrap
 /******/ 	// The module cache
 /******/ 	var installedModules = {};
@@ -44,10 +45,22 @@
 /* 0 */
 /***/ function(module, exports, __webpack_require__) {
 
+	/**
+	 * extend Backbone Collection for app use
+	 */
 	var bb = __webpack_require__(1);
+	var decorate = __webpack_require__(2);
 
-	bb.sync = __webpack_require__(2);
-	bb.IDBCollection = __webpack_require__(3);
+	module.exports = {
+	  Collection : bb.Collection.extend({
+
+	    constructor: function () {
+	      bb.Collection.apply(this, arguments);
+	      decorate(this);
+	    }
+
+	  })
+	};
 
 /***/ },
 /* 1 */
@@ -60,70 +73,13 @@
 /***/ function(module, exports, __webpack_require__) {
 
 	var bb = __webpack_require__(1);
-
-	/* jshint -W074 */
-	module.exports = function(method, entity, options) {
-	  options = options || {};
-	  var isModel = entity instanceof bb.Model,
-	      data = options.attrsArray,
-	      db = entity.db,
-	      key;
-
-	  if(isModel){
-	    db = entity.collection.db;
-	    key = options.index ? entity.get(options.index) : entity.id;
-	    data = entity.toJSON();
-	  }
-
-	  return db.open()
-	    .then(function () {
-	      switch (method) {
-	        case 'create':
-	        case 'update':
-	        case 'patch':
-	          return db.update(data, options);
-	        case 'read':
-	          return db.read(key, options);
-	        case 'delete':
-	          return db.delete(key, options);
-	      }
-	    })
-	    .then(function (resp) {
-	      if (options.success) { options.success(resp); }
-	      return resp;
-	    })
-	    .catch(function (resp) {
-	      if (options.error) { options.error(resp); }
-	    });
-
-	};
-	/* jshint +W074 */
-
-/***/ },
-/* 3 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var bb = __webpack_require__(1);
-	var decorate = __webpack_require__(4);
-
-	module.exports = bb.Collection.extend({
-
-	  constructor: function () {
-	    bb.Collection.apply(this, arguments);
-	    decorate(this);
-	  }
-
-	});
-
-/***/ },
-/* 4 */
-/***/ function(module, exports, __webpack_require__) {
-
-	var bb = __webpack_require__(1);
-	var _ = __webpack_require__(5);
-	var IDBAdapter = __webpack_require__(6);
+	var _ = __webpack_require__(3);
+	var IDBAdapter = __webpack_require__(4);
+	var sync = __webpack_require__(7);
 
 	var methods = {
+
+	  sync: sync,
 
 	  /**
 	   *
@@ -231,22 +187,23 @@
 
 	module.exports = function (collection){
 	  _.extend(collection, methods);
+	  collection.model.prototype.sync = sync;
 	  collection.db = new IDBAdapter({ collection: collection });
 	};
 
 /***/ },
-/* 5 */
+/* 3 */
 /***/ function(module, exports) {
 
 	module.exports = _;
 
 /***/ },
-/* 6 */
+/* 4 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jshint -W071, -W074 */
-	var _ = __webpack_require__(5);
-	var matchMaker = __webpack_require__(7);
+	var _ = __webpack_require__(3);
+	var matchMaker = __webpack_require__(5);
 
 	var is_safari = window.navigator.userAgent.indexOf('Safari') !== -1 &&
 	  window.navigator.userAgent.indexOf('Chrome') === -1 &&
@@ -656,11 +613,11 @@
 	/* jshint +W071, +W074 */
 
 /***/ },
-/* 7 */
+/* 5 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _ = __webpack_require__(5);
-	var match = __webpack_require__(8);
+	var _ = __webpack_require__(3);
+	var match = __webpack_require__(6);
 
 	var defaults = {
 	  fields: ['title'] // json property to use for simple string search
@@ -741,10 +698,10 @@
 	};
 
 /***/ },
-/* 8 */
+/* 6 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var _ = __webpack_require__(5);
+	var _ = __webpack_require__(3);
 
 	var toType = function(obj){
 	  return ({}).toString.call(obj).match(/\s([a-z|A-Z]+)/)[1].toLowerCase();
@@ -793,6 +750,50 @@
 	    return match[type](haystack, needle, opts);
 	  }
 	};
+
+/***/ },
+/* 7 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var bb = __webpack_require__(1);
+
+	/* jshint -W074 */
+	module.exports = function(method, entity, options) {
+	  options = options || {};
+	  var isModel = entity instanceof bb.Model,
+	      data = options.attrsArray,
+	      db = entity.db,
+	      key;
+
+	  if(isModel){
+	    db = entity.collection.db;
+	    key = options.index ? entity.get(options.index) : entity.id;
+	    data = entity.toJSON();
+	  }
+
+	  return db.open()
+	    .then(function () {
+	      switch (method) {
+	        case 'create':
+	        case 'update':
+	        case 'patch':
+	          return db.update(data, options);
+	        case 'read':
+	          return db.read(key, options);
+	        case 'delete':
+	          return db.delete(key, options);
+	      }
+	    })
+	    .then(function (resp) {
+	      if (options.success) { options.success(resp); }
+	      return resp;
+	    })
+	    .catch(function (resp) {
+	      if (options.error) { options.error(resp); }
+	    });
+
+	};
+	/* jshint +W074 */
 
 /***/ }
 /******/ ]);

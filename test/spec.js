@@ -1,6 +1,13 @@
-describe('Backbone IndexedDB', function () {
+describe('IndexedDB Collections', function () {
   var dbNameArray = [];
   var Collection;
+
+  var IDBCollection = app.Collection.extend({
+    decorators: ['idb'],
+    model: Backbone.Model.extend({
+      special: true
+    })
+  });
 
   // is_safari worse than IE
   var is_safari = window.navigator.userAgent.indexOf('Safari') !== -1 &&
@@ -10,7 +17,7 @@ describe('Backbone IndexedDB', function () {
   beforeEach(function(){
     var storePrefix = 'Test-';
     var name = Date.now().toString();
-    Collection = Backbone.IDBCollection.extend({
+    Collection = IDBCollection.extend({
       storePrefix: storePrefix,
       name: name
     });
@@ -30,6 +37,13 @@ describe('Backbone IndexedDB', function () {
         done();
       })
       .catch( done );
+  });
+
+  it('should decorate the model', function(){
+    var collection = new Collection();
+    var model = collection.add({});
+    expect(model.special).to.be.true;
+    expect(model.sync).eqls(collection.sync);
   });
 
   it('should create a model', function (done) {
@@ -148,30 +162,30 @@ describe('Backbone IndexedDB', function () {
   it('should batch save a collection of models', function (done) {
     var collection = new Collection();
     collection.save([
-        {
-          firstname: 'Jane',
-          lastname : 'Smith',
-          age      : 35,
-          email    : 'janesmith@example.com'
-        }, {
-          firstname: 'John',
-          lastname : 'Doe',
-          age      : 52,
-          email    : 'johndoe@example.com'
-        }, {
-          firstname: 'Joe',
-          lastname : 'Bloggs',
-          age      : 28,
-          email    : 'joebloggs@example.com'
-        }
-      ], {
-        special: true,
-        success: function(collection, response, options){
-          expect(collection.map('id')).eqls([1, 2, 3]);
-          expect(response).to.have.length(3);
-          expect(options.special).to.be.true;
-        }
-      })
+      {
+        firstname: 'Jane',
+        lastname : 'Smith',
+        age      : 35,
+        email    : 'janesmith@example.com'
+      }, {
+        firstname: 'John',
+        lastname : 'Doe',
+        age      : 52,
+        email    : 'johndoe@example.com'
+      }, {
+        firstname: 'Joe',
+        lastname : 'Bloggs',
+        age      : 28,
+        email    : 'joebloggs@example.com'
+      }
+    ], {
+      special: true,
+      success: function(collection, response, options){
+        expect(collection.map('id')).eqls([1, 2, 3]);
+        expect(response).to.have.length(3);
+        expect(options.special).to.be.true;
+      }
+    })
       .then(function (records) {
         expect(records).to.have.length(3);
         done();
@@ -183,31 +197,31 @@ describe('Backbone IndexedDB', function () {
   it('should batch save a collection of models without updating collection', function (done) {
     var collection = new Collection();
     collection.save([
-        {
-          firstname: 'Jane',
-          lastname : 'Smith',
-          age      : 35,
-          email    : 'janesmith@example.com'
-        }, {
-          firstname: 'John',
-          lastname : 'Doe',
-          age      : 52,
-          email    : 'johndoe@example.com'
-        }, {
-          firstname: 'Joe',
-          lastname : 'Bloggs',
-          age      : 28,
-          email    : 'joebloggs@example.com'
-        }
-      ], {
-        special: true,
-        set: false,
-        success: function(collection, response, options){
-          expect(collection).to.have.length(0);
-          expect(response).to.have.length(3);
-          expect(options.special).to.be.true;
-        }
-      })
+      {
+        firstname: 'Jane',
+        lastname : 'Smith',
+        age      : 35,
+        email    : 'janesmith@example.com'
+      }, {
+        firstname: 'John',
+        lastname : 'Doe',
+        age      : 52,
+        email    : 'johndoe@example.com'
+      }, {
+        firstname: 'Joe',
+        lastname : 'Bloggs',
+        age      : 28,
+        email    : 'joebloggs@example.com'
+      }
+    ], {
+      special: true,
+      set: false,
+      success: function(collection, response, options){
+        expect(collection).to.have.length(0);
+        expect(response).to.have.length(3);
+        expect(options.special).to.be.true;
+      }
+    })
       .then(function (records) {
         expect(records).to.have.length(3);
         done();
@@ -219,23 +233,23 @@ describe('Backbone IndexedDB', function () {
   it('should count indexeddb records', function (done) {
     var collection = new Collection();
     collection.save([
-        {
-          firstname: 'Jane',
-          lastname: 'Smith',
-          age: 35,
-          email: 'janesmith@example.com'
-        }, {
-          firstname: 'John',
-          lastname: 'Doe',
-          age: 52,
-          email: 'johndoe@example.com'
-        }, {
-          firstname: 'Joe',
-          lastname: 'Bloggs',
-          age: 28,
-          email: 'joebloggs@example.com'
-        }
-      ])
+      {
+        firstname: 'Jane',
+        lastname: 'Smith',
+        age: 35,
+        email: 'janesmith@example.com'
+      }, {
+        firstname: 'John',
+        lastname: 'Doe',
+        age: 52,
+        email: 'johndoe@example.com'
+      }, {
+        firstname: 'Joe',
+        lastname: 'Bloggs',
+        age: 28,
+        email: 'joebloggs@example.com'
+      }
+    ])
       .then( function() {
         collection.count()
           .then(function(count){
@@ -381,23 +395,23 @@ describe('Backbone IndexedDB', function () {
   it('should destroy a collection', function (done) {
     var collection = new Collection();
     collection.save([
-        {
-          firstname: 'Jane',
-          lastname: 'Smith',
-          age: 35,
-          email: 'janesmith@example.com'
-        }, {
-          firstname: 'John',
-          lastname: 'Doe',
-          age: 52,
-          email: 'johndoe@example.com'
-        }, {
-          firstname: 'Joe',
-          lastname: 'Bloggs',
-          age: 28,
-          email: 'joebloggs@example.com'
-        }
-      ])
+      {
+        firstname: 'Jane',
+        lastname: 'Smith',
+        age: 35,
+        email: 'janesmith@example.com'
+      }, {
+        firstname: 'John',
+        lastname: 'Doe',
+        age: 52,
+        email: 'johndoe@example.com'
+      }, {
+        firstname: 'Joe',
+        lastname: 'Bloggs',
+        age: 28,
+        email: 'joebloggs@example.com'
+      }
+    ])
       .then( function() {
         expect( collection ).to.have.length( 3 );
         collection.destroy()
@@ -438,22 +452,22 @@ describe('Backbone IndexedDB', function () {
         email: 'joebloggs@example.com'
       }
     ])
-    .then(function(){
-      return collection.fetch({
-        index: 'age',
-        data: {
-          filter: {
-            limit: 1,
-            order: 'DESC'
+      .then(function(){
+        return collection.fetch({
+          index: 'age',
+          data: {
+            filter: {
+              limit: 1,
+              order: 'DESC'
+            }
           }
-        }
+        });
+      })
+      .then(function(response){
+        expect(response).to.have.length(1);
+        expect(response[0].age).equals(52);
+        done();
       });
-    })
-    .then(function(response){
-      expect(response).to.have.length(1);
-      expect(response[0].age).equals(52);
-      done();
-    });
   });
 
   it('should count the records on open', function(done){
@@ -877,7 +891,7 @@ describe('Backbone IndexedDB', function () {
    *
    * 10000 records
    */
-  //it('should be performant with putBatch', function(done) {
+  // it('should be performant with putBatch', function(done) {
   //  var collection = new Collection();
   //
   //  var count = is_safari ? 2000 : 10000;
@@ -897,7 +911,7 @@ describe('Backbone IndexedDB', function () {
   //      done();
   //    })
   //    .catch(done);
-  //});
+  // });
 
   /**
    * 1000 records
