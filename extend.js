@@ -1,3 +1,5 @@
+var _ = require('lodash');
+
 module.exports = function(protoProps, staticProps){
   var parent = this;
   var child;

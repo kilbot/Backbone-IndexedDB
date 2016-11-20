@@ -49,12 +49,11 @@ var app =
 	 * extend Backbone Collection for app use
 	 */
 	var bb = __webpack_require__(1);
-	var _ = __webpack_require__(3);
-	var extend = __webpack_require__(9);
+	var extend = __webpack_require__(2);
 
 	var Collection = bb.Collection.extend({
 	  decorators :{
-	    idb: __webpack_require__(2)
+	    idb: __webpack_require__(4)
 	  },
 	  constructor: function () {
 	    // this._parent = Object.getPrototypeOf( Object.getPrototypeOf(this) );
@@ -64,7 +63,7 @@ var app =
 
 	var Model = bb.Model.extend({
 	  decorators :{
-	    idb: __webpack_require__(8)
+	    idb: __webpack_require__(9)
 	  }
 	});
 
@@ -85,10 +84,62 @@ var app =
 /* 2 */
 /***/ function(module, exports, __webpack_require__) {
 
+	var _ = __webpack_require__(3);
+
+	module.exports = function(protoProps, staticProps){
+	  var parent = this;
+	  var child;
+	  var extend;
+	  var decorators = _.get(parent, ['prototype', 'decorators']);
+
+	  if (!_.isEmpty(decorators) && protoProps && _.has(protoProps, 'extends')) {
+	    extend = _.isString(protoProps.extends) ? [protoProps.extends] : protoProps.extends;
+	  }
+
+	  // russian doll decorators
+	  if(extend && _.isArray(extend)){
+	    _.each(extend, function(key){
+	      if(!_.includes(parent._extended, key)){
+	        parent = _.has(decorators, key) ? decorators[key](parent) : parent;
+	        _.isArray(parent._extended) ? parent._extended.push(key) : parent._extended = [key];
+	      }
+	    });
+	  }
+
+	  if (protoProps && _.has(protoProps, 'constructor')) {
+	    child = protoProps.constructor;
+	  } else {
+	    child = function(){ return parent.apply(this, arguments); };
+	  }
+
+	  // Add static properties to the constructor function, if supplied.
+	  _.extend(child, parent, staticProps);
+
+	  // Set the prototype chain to inherit from `parent`, without calling
+	  // `parent`'s constructor function and add the prototype properties.
+	  child.prototype = _.create(parent.prototype, protoProps);
+	  child.prototype.constructor = child;
+
+	  // Set a convenience property in case the parent's prototype is needed
+	  // later.
+	  child.__super__ = parent.prototype;
+	  return child;
+	};
+
+/***/ },
+/* 3 */
+/***/ function(module, exports) {
+
+	module.exports = _;
+
+/***/ },
+/* 4 */
+/***/ function(module, exports, __webpack_require__) {
+
 	var bb = __webpack_require__(1);
 	var _ = __webpack_require__(3);
-	var IDBAdapter = __webpack_require__(4);
-	var sync = __webpack_require__(7);
+	var IDBAdapter = __webpack_require__(5);
+	var sync = __webpack_require__(8);
 
 	module.exports = function (parent){
 
@@ -211,18 +262,12 @@ var app =
 	};
 
 /***/ },
-/* 3 */
-/***/ function(module, exports) {
-
-	module.exports = _;
-
-/***/ },
-/* 4 */
+/* 5 */
 /***/ function(module, exports, __webpack_require__) {
 
 	/* jshint -W071, -W074 */
 	var _ = __webpack_require__(3);
-	var matchMaker = __webpack_require__(5);
+	var matchMaker = __webpack_require__(6);
 
 	var is_safari = window.navigator.userAgent.indexOf('Safari') !== -1 &&
 	  window.navigator.userAgent.indexOf('Chrome') === -1 &&
@@ -632,11 +677,11 @@ var app =
 	/* jshint +W071, +W074 */
 
 /***/ },
-/* 5 */
+/* 6 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var _ = __webpack_require__(3);
-	var match = __webpack_require__(6);
+	var match = __webpack_require__(7);
 
 	var defaults = {
 	  fields: ['title'] // json property to use for simple string search
@@ -717,7 +762,7 @@ var app =
 	};
 
 /***/ },
-/* 6 */
+/* 7 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var _ = __webpack_require__(3);
@@ -771,7 +816,7 @@ var app =
 	};
 
 /***/ },
-/* 7 */
+/* 8 */
 /***/ function(module, exports, __webpack_require__) {
 
 	var bb = __webpack_require__(1);
@@ -815,10 +860,10 @@ var app =
 	/* jshint +W074 */
 
 /***/ },
-/* 8 */
+/* 9 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var sync = __webpack_require__(7);
+	var sync = __webpack_require__(8);
 
 	module.exports = function (parent){
 
@@ -828,50 +873,6 @@ var app =
 
 	  return IDBModel;
 
-	};
-
-/***/ },
-/* 9 */
-/***/ function(module, exports) {
-
-	module.exports = function(protoProps, staticProps){
-	  var parent = this;
-	  var child;
-	  var extend;
-	  var decorators = _.get(parent, ['prototype', 'decorators']);
-
-	  if (!_.isEmpty(decorators) && protoProps && _.has(protoProps, 'extends')) {
-	    extend = _.isString(protoProps.extends) ? [protoProps.extends] : protoProps.extends;
-	  }
-
-	  // russian doll decorators
-	  if(extend && _.isArray(extend)){
-	    _.each(extend, function(key){
-	      if(!_.includes(parent._extended, key)){
-	        parent = _.has(decorators, key) ? decorators[key](parent) : parent;
-	        _.isArray(parent._extended) ? parent._extended.push(key) : parent._extended = [key];
-	      }
-	    });
-	  }
-
-	  if (protoProps && _.has(protoProps, 'constructor')) {
-	    child = protoProps.constructor;
-	  } else {
-	    child = function(){ return parent.apply(this, arguments); };
-	  }
-
-	  // Add static properties to the constructor function, if supplied.
-	  _.extend(child, parent, staticProps);
-
-	  // Set the prototype chain to inherit from `parent`, without calling
-	  // `parent`'s constructor function and add the prototype properties.
-	  child.prototype = _.create(parent.prototype, protoProps);
-	  child.prototype.constructor = child;
-
-	  // Set a convenience property in case the parent's prototype is needed
-	  // later.
-	  child.__super__ = parent.prototype;
-	  return child;
 	};
 
 /***/ }

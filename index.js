@@ -2,7 +2,6 @@
  * extend Backbone Collection for app use
  */
 var bb = require('backbone');
-var _ = require('lodash');
 var extend = require('./extend');
 
 var Collection = bb.Collection.extend({
