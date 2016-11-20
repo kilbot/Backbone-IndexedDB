@@ -49,17 +49,30 @@ var app =
 	 * extend Backbone Collection for app use
 	 */
 	var bb = __webpack_require__(1);
-	var decorate = __webpack_require__(2);
+	var _ = __webpack_require__(3);
+	var extend = __webpack_require__(9);
+
+	var Collection = bb.Collection.extend({
+	  decorators :{
+	    idb: __webpack_require__(2)
+	  },
+	  constructor: function () {
+	    // this._parent = Object.getPrototypeOf( Object.getPrototypeOf(this) );
+	    bb.Collection.apply(this, arguments);
+	  },
+	});
+
+	var Model = bb.Model.extend({
+	  decorators :{
+	    idb: __webpack_require__(8)
+	  }
+	});
+
+	Collection.extend = Model.extend = extend;
 
 	module.exports = {
-	  Collection : bb.Collection.extend({
-
-	    constructor: function () {
-	      bb.Collection.apply(this, arguments);
-	      decorate(this);
-	    }
-
-	  })
+	  Collection  : Collection,
+	  Model       : Model
 	};
 
 /***/ },
@@ -77,118 +90,124 @@ var app =
 	var IDBAdapter = __webpack_require__(4);
 	var sync = __webpack_require__(7);
 
-	var methods = {
+	module.exports = function (parent){
 
-	  sync: sync,
+	  var IDBCollection = parent.extend({
 
-	  /**
-	   *
-	   */
-	  /* jshint -W071, -W074 */
-	  save: function(models, options){
-	    options = options || {};
-	    var collection = this,
-	      wait = options.wait,
-	      success = options.success,
-	      setAttrs = options.set !== false;
+	    constructor: function(){
+	      parent.apply(this, arguments);
+	      this.db = new IDBAdapter({ collection: this });
+	    },
 
-	    if(models === null){
-	      models = this.getChangedModels();
-	    }
+	    sync: sync,
 
-	    var attrsArray = _.map(models, function(model){
-	      return model instanceof bb.Model ? model.toJSON() : model;
-	    });
-
-	    if(!wait && setAttrs){
-	      this.set(attrsArray, options);
-	    }
-
-	    options.success = function(resp) {
-	      var serverAttrs = options.parse ? collection.parse(resp, options) : resp;
-	      if (serverAttrs && setAttrs) { collection.set(serverAttrs, options); }
-	      if (success) { success.call(options.context, collection, resp, options); }
-	      collection.trigger('sync', collection, resp, options);
-	    };
-
-	    return this.sync('update', this, _.extend(options, {attrsArray: attrsArray}));
-	  },
-
-	  /**
-	   *
-	   */
-	  destroy: function(models, options){
-	    if(!options && models && !_.isArray(models)){
-	      options = models;
-	    } else {
+	    /**
+	     *
+	     */
+	    /* jshint -W071, -W074 */
+	    save: function(models, options){
 	      options = options || {};
-	    }
+	      var collection = this,
+	        wait = options.wait,
+	        success = options.success,
+	        setAttrs = options.set !== false;
 
-	    var collection = this,
-	      wait = options.wait,
-	      success = options.success;
+	      if(models === null){
+	        models = this.getChangedModels();
+	      }
 
-	    options.attrsArray = _.map(models, function(model){
-	      return model instanceof bb.Model ? model.toJSON() : model;
-	    });
+	      var attrsArray = _.map(models, function(model){
+	        return model instanceof bb.Model ? model.toJSON() : model;
+	      });
 
-	    if(options.data){
-	      wait = true;
-	    }
+	      if(!wait && setAttrs){
+	        this.set(attrsArray, options);
+	      }
 
-	    options.success = function(resp) {
-	      if(wait && _.isEmpty(options.attrsArray) ) {
-	        collection.resetNew();
+	      options.success = function(resp) {
+	        var serverAttrs = options.parse ? collection.parse(resp, options) : resp;
+	        if (serverAttrs && setAttrs) { collection.set(serverAttrs, options); }
+	        if (success) { success.call(options.context, collection, resp, options); }
+	        collection.trigger('sync', collection, resp, options);
+	      };
+
+	      return this.sync('update', this, _.extend(options, {attrsArray: attrsArray}));
+	    },
+
+	    /**
+	     *
+	     */
+	    destroy: function(models, options){
+	      if(!options && models && !_.isArray(models)){
+	        options = models;
+	      } else {
+	        options = options || {};
+	      }
+
+	      var collection = this,
+	        wait = options.wait,
+	        success = options.success;
+
+	      options.attrsArray = _.map(models, function(model){
+	        return model instanceof bb.Model ? model.toJSON() : model;
+	      });
+
+	      if(options.data){
+	        wait = true;
+	      }
+
+	      options.success = function(resp) {
+	        if(wait && _.isEmpty(options.attrsArray) ) {
+	          collection.resetNew();
+	          collection.reset();
+	        }
+	        if(wait && !_.isEmpty(options.attrsArray)) {
+	          collection.remove(options.attrsArray);
+	        }
+	        if (success) { success.call(options.context, collection, resp, options); }
+	        collection.trigger('sync', collection, resp, options);
+	      };
+
+	      if(!wait && _.isEmpty(options.attrsArray) ) {
 	        collection.reset();
 	      }
-	      if(wait && !_.isEmpty(options.attrsArray)) {
+
+	      if(!wait && !_.isEmpty(options.attrsArray)) {
 	        collection.remove(options.attrsArray);
 	      }
-	      if (success) { success.call(options.context, collection, resp, options); }
-	      collection.trigger('sync', collection, resp, options);
-	    };
 
-	    if(!wait && _.isEmpty(options.attrsArray) ) {
-	      collection.reset();
-	    }
+	      return this.sync('delete', this, options);
+	    },
+	    /* jshint +W071, +W074 */
 
-	    if(!wait && !_.isEmpty(options.attrsArray)) {
-	      collection.remove(options.attrsArray);
-	    }
+	    /**
+	     *
+	     */
+	    count: function () {
+	      var self = this;
+	      return this.db.open()
+	        .then(function () {
+	          return self.db.count();
+	        })
+	        .then(function (count) {
+	          self.trigger('count', count);
+	          return count;
+	        });
+	    },
 
-	    return this.sync('delete', this, options);
-	  },
-	  /* jshint +W071, +W074 */
-
-	  /**
-	   *
-	   */
-	  count: function () {
-	    var self = this;
-	    return this.db.open()
-	      .then(function () {
-	        return self.db.count();
-	      })
-	      .then(function (count) {
-	        self.trigger('count', count);
-	        return count;
+	    /**
+	     *
+	     */
+	    getChangedModels: function () {
+	      return this.filter(function (model) {
+	        return model.isNew() || model.hasChanged();
 	      });
-	  },
+	    }
 
-	  /**
-	   *
-	   */
-	  getChangedModels: function () {
-	    return this.filter(function (model) {
-	      return model.isNew() || model.hasChanged();
-	    });
-	  }
-	};
+	  });
 
-	module.exports = function (collection){
-	  _.extend(collection, methods);
-	  collection.model.prototype.sync = sync;
-	  collection.db = new IDBAdapter({ collection: collection });
+	  return IDBCollection;
+
 	};
 
 /***/ },
@@ -794,6 +813,66 @@ var app =
 
 	};
 	/* jshint +W074 */
+
+/***/ },
+/* 8 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var sync = __webpack_require__(7);
+
+	module.exports = function (parent){
+
+	  var IDBModel = parent.extend({
+	    sync: sync
+	  });
+
+	  return IDBModel;
+
+	};
+
+/***/ },
+/* 9 */
+/***/ function(module, exports) {
+
+	module.exports = function(protoProps, staticProps){
+	  var parent = this;
+	  var child;
+	  var extend;
+	  var decorators = _.get(parent, ['prototype', 'decorators']);
+
+	  if (!_.isEmpty(decorators) && protoProps && _.has(protoProps, 'extends')) {
+	    extend = _.isString(protoProps.extends) ? [protoProps.extends] : protoProps.extends;
+	  }
+
+	  // russian doll decorators
+	  if(extend && _.isArray(extend)){
+	    _.each(extend, function(key){
+	      if(!_.includes(parent._extended, key)){
+	        parent = _.has(decorators, key) ? decorators[key](parent) : parent;
+	        _.isArray(parent._extended) ? parent._extended.push(key) : parent._extended = [key];
+	      }
+	    });
+	  }
+
+	  if (protoProps && _.has(protoProps, 'constructor')) {
+	    child = protoProps.constructor;
+	  } else {
+	    child = function(){ return parent.apply(this, arguments); };
+	  }
+
+	  // Add static properties to the constructor function, if supplied.
+	  _.extend(child, parent, staticProps);
+
+	  // Set the prototype chain to inherit from `parent`, without calling
+	  // `parent`'s constructor function and add the prototype properties.
+	  child.prototype = _.create(parent.prototype, protoProps);
+	  child.prototype.constructor = child;
+
+	  // Set a convenience property in case the parent's prototype is needed
+	  // later.
+	  child.__super__ = parent.prototype;
+	  return child;
+	};
 
 /***/ }
 /******/ ]);

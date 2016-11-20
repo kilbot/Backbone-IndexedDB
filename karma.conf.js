@@ -1,5 +1,7 @@
 module.exports = function (config) {
-  var customLaunchers = require('./test/browsers');
+  var seleniumLaunchers = require('./test/browsers');
+  var appiumLaunchers = require('./test/appium');
+  var launchers = Object.assign(seleniumLaunchers, appiumLaunchers);
 
   var configuration = {
     frameworks: ['mocha', 'chai'],
@@ -33,7 +35,7 @@ module.exports = function (config) {
       },
     },
     captureTimeout: 120000,
-    customLaunchers: customLaunchers,
+    customLaunchers: launchers,
 
     /**
      * mocha settings don't work :(
@@ -47,7 +49,7 @@ module.exports = function (config) {
 };
 
   if (process.env.TRAVIS) {
-    configuration.browsers = Object.keys(customLaunchers);
+    configuration.browsers = Object.keys(launchers);
     configuration.singleRun = true;
   }
 

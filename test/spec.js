@@ -3,8 +3,9 @@ describe('IndexedDB Collections', function () {
   var Collection;
 
   var IDBCollection = app.Collection.extend({
-    decorators: ['idb'],
-    model: Backbone.Model.extend({
+    extends: ['idb'],
+    model: app.Model.extend({
+      extends: ['idb'],
       special: true
     })
   });
