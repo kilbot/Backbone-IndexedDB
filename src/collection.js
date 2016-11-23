@@ -1,11 +1,17 @@
 var bb = require('backbone');
 var _ = require('lodash');
 var IDBAdapter = require('./adapter');
+var IDBModel = require('./model');
 var sync = require('./sync');
 
 module.exports = function (parent){
 
   var IDBCollection = parent.extend({
+
+    model: IDBModel,
+
+    name       : 'store',
+    storePrefix: 'wc_pos_',
 
     constructor: function(){
       parent.apply(this, arguments);
@@ -53,6 +59,7 @@ module.exports = function (parent){
     destroy: function(models, options){
       if(!options && models && !_.isArray(models)){
         options = models;
+        models = undefined;
       } else {
         options = options || {};
       }
@@ -61,31 +68,33 @@ module.exports = function (parent){
         wait = options.wait,
         success = options.success;
 
-      options.attrsArray = _.map(models, function(model){
-        return model instanceof bb.Model ? model.toJSON() : model;
-      });
+      if(models){
+        options.attrsArray = _.map(models, function(model){
+          return model instanceof bb.Model ? model.toJSON() : model;
+        });
+      }
 
       if(options.data){
         wait = true;
       }
 
       options.success = function(resp) {
-        if(wait && _.isEmpty(options.attrsArray) ) {
-          collection.resetNew();
+        if(wait && !options.attrsArray) {
+          collection.isNew(true);
           collection.reset();
         }
-        if(wait && !_.isEmpty(options.attrsArray)) {
+        if(wait && options.attrsArray) {
           collection.remove(options.attrsArray);
         }
         if (success) { success.call(options.context, collection, resp, options); }
         collection.trigger('sync', collection, resp, options);
       };
 
-      if(!wait && _.isEmpty(options.attrsArray) ) {
+      if(!wait && !options.attrsArray) {
         collection.reset();
       }
 
-      if(!wait && !_.isEmpty(options.attrsArray)) {
+      if(!wait && options.attrsArray) {
         collection.remove(options.attrsArray);
       }
 
@@ -115,6 +124,35 @@ module.exports = function (parent){
       return this.filter(function (model) {
         return model.isNew() || model.hasChanged();
       });
+    },
+
+    /**
+     * Each website will have a unique idbVersion number
+     * the version number is incremented on plugin update and some user actions
+     * this version check will compare the version numbers
+     * idb is flushed on version change
+     */
+    versionCheck: function () {
+      var name = this.name;
+
+      var newVersion = parseInt(Radio.request('entities', 'get', {
+          type: 'option',
+          name: 'idbVersion'
+        }), 10) || 0;
+      var oldVersion = parseInt(Radio.request('entities', 'get', {
+          type: 'localStorage',
+          name: name + '_idbVersion'
+        }), 10) || 0;
+
+      if (newVersion !== oldVersion) {
+        this.destroy().then(function () {
+          Radio.request('entities', 'set', {
+            type: 'localStorage',
+            name: name + '_idbVersion',
+            data: newVersion
+          });
+        });
+      }
     }
 
   });

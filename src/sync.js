@@ -4,9 +4,9 @@ var bb = require('backbone');
 module.exports = function(method, entity, options) {
   options = options || {};
   var isModel = entity instanceof bb.Model,
-      data = options.attrsArray,
-      db = entity.db,
-      key;
+    data = options.attrsArray,
+    db = entity.db,
+    key;
 
   if(isModel){
     db = entity.collection.db;

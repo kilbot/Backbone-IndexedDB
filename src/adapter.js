@@ -200,8 +200,8 @@ IDBAdapter.prototype = {
   get: function (key, options) {
     options = options || {};
     var objectStore = options.objectStore || this.getObjectStore(consts.READ_ONLY),
-        keyPath     = options.index || this.opts.keyPath,
-        self        = this;
+      keyPath     = options.index || this.opts.keyPath,
+      self        = this;
 
     if (_.isObject(keyPath)) {
       keyPath = keyPath.keyPath;
@@ -225,8 +225,8 @@ IDBAdapter.prototype = {
   remove: function (key, options) {
     options = options || {};
     var objectStore = options.objectStore || this.getObjectStore(consts.READ_WRITE),
-        keyPath     = options.index || this.opts.keyPath,
-        self        = this;
+      keyPath     = options.index || this.opts.keyPath,
+      self        = this;
 
     if(_.isObject(key)){
       key = key[keyPath];
@@ -245,7 +245,7 @@ IDBAdapter.prototype = {
         err.code = event.target.errorCode;
         reject(err);
       };
-      
+
       request.onerror = function (event) {
         options._error = {event: event, message: 'delete error', callback: reject};
         self.opts.onerror(options);
@@ -297,18 +297,18 @@ IDBAdapter.prototype = {
     options = options || {};
 
     var objectStore = options.objectStore || this.getObjectStore(consts.READ_ONLY),
-        include     = _.isArray(keyArray) ? keyArray : _.get(options, ['data', 'filter', 'in']),
-        exclude     = _.get(options, ['data', 'filter', 'not_in']),
-        limit       = _.get(options, ['data', 'filter', 'limit'], -1),
-        start       = _.get(options, ['data', 'filter', 'offset'], 0),
-        order       = _.get(options, ['data', 'filter', 'order'], 'ASC'),
-        direction   = order === 'DESC' ? consts.PREV : consts.NEXT,
-        query       = _.get(options, ['data', 'filter', 'q']),
-        keyPath     = options.index || this.opts.keyPath,
-        page        = _.get(options, ['data', 'page']),
-        self        = this,
-        range       = null,
-        end;
+      include     = _.isArray(keyArray) ? keyArray : _.get(options, ['data', 'filter', 'in']),
+      exclude     = _.get(options, ['data', 'filter', 'not_in']),
+      limit       = _.get(options, ['data', 'filter', 'limit'], -1),
+      start       = _.get(options, ['data', 'filter', 'offset'], 0),
+      order       = _.get(options, ['data', 'filter', 'order'], 'ASC'),
+      direction   = order === 'DESC' ? consts.PREV : consts.NEXT,
+      query       = _.get(options, ['data', 'filter', 'q']),
+      keyPath     = options.index || this.opts.keyPath,
+      page        = _.get(options, ['data', 'page']),
+      self        = this,
+      range       = null,
+      end;
 
     if (_.isObject(keyPath)) {
       if(keyPath.value){
@@ -369,7 +369,9 @@ IDBAdapter.prototype = {
       return this.getBatch(null, options)
         .then(function(response){
           options.attrsArray = _.map(response, self.opts.keyPath);
-          return self.removeBatch(options.attrsArray);
+          if(!_.isEmpty(options.attrsArray)){
+            return self.removeBatch(options.attrsArray);
+          }
         });
     }
 
