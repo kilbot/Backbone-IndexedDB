@@ -30,10 +30,14 @@ module.exports = function(method, entity, options) {
     .then(function (resp) {
       if (options.success) { options.success(resp); }
       return resp;
-    })
-    .catch(function (resp) {
-      if (options.error) { options.error(resp); }
     });
+
+  /**
+   * Catch handled by sync config
+   */
+  // .catch(function (resp) {
+  //   if (options.error) { options.error(resp); }
+  // });
 
 };
 /* jshint +W074 */

@@ -11,7 +11,7 @@ var Collection = bb.Collection.extend({
   constructor: function () {
     // this._parent = Object.getPrototypeOf( Object.getPrototypeOf(this) );
     bb.Collection.apply(this, arguments);
-  },
+  }
 });
 
 var Model = bb.Model.extend({

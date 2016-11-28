@@ -1,5 +1,6 @@
 var bb = require('backbone');
 var _ = require('lodash');
+var Radio = require('backbone.radio');
 var IDBAdapter = require('./adapter');
 var IDBModel = require('./model');
 var sync = require('./sync');
@@ -50,7 +51,7 @@ module.exports = function (parent){
         collection.trigger('sync', collection, resp, options);
       };
 
-      return this.sync('update', this, _.extend(options, {attrsArray: attrsArray}));
+      return sync('update', this, _.extend(options, {attrsArray: attrsArray}));
     },
 
     /**
@@ -98,7 +99,7 @@ module.exports = function (parent){
         collection.remove(options.attrsArray);
       }
 
-      return this.sync('delete', this, options);
+      return sync('delete', this, options);
     },
     /* jshint +W071, +W074 */
 
