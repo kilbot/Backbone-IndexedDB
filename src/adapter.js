@@ -322,7 +322,7 @@ IDBAdapter.prototype = {
     }
 
     return new Promise(function (resolve, reject) {
-      var records = [], delayed = 0;
+      var records = [], delayed = 0, excluded = 0;
       var request = (keyPath === self.opts.keyPath) ?
         objectStore.openCursor(range, direction) :
         objectStore.index(keyPath).openCursor(range, direction);
@@ -339,10 +339,12 @@ IDBAdapter.prototype = {
             (!query || self._match(query, cursor.value, keyPath, options))
           ) {
             records.push(cursor.value);
+          } else if (exclude && _.includes(exclude, cursor.value[keyPath])){
+            excluded++;
           }
           return cursor.continue();
         }
-        _.set(options, 'idb.total', records.length);
+        _.set(options, 'idb.total', records.length + excluded);
         _.set(options, 'idb.delayed', delayed);
         end = limit !== -1 ? start + limit : records.length;
         resolve(_.slice(records, start, end));

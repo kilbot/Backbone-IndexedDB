@@ -983,7 +983,7 @@ var app =
 	    }
 
 	    return new Promise(function (resolve, reject) {
-	      var records = [], delayed = 0;
+	      var records = [], delayed = 0, excluded = 0;
 	      var request = (keyPath === self.opts.keyPath) ?
 	        objectStore.openCursor(range, direction) :
 	        objectStore.index(keyPath).openCursor(range, direction);
@@ -1000,10 +1000,12 @@ var app =
 	            (!query || self._match(query, cursor.value, keyPath, options))
 	          ) {
 	            records.push(cursor.value);
+	          } else if (exclude && _.includes(exclude, cursor.value[keyPath])){
+	            excluded++;
 	          }
 	          return cursor.continue();
 	        }
-	        _.set(options, 'idb.total', records.length);
+	        _.set(options, 'idb.total', records.length + excluded);
 	        _.set(options, 'idb.delayed', delayed);
 	        end = limit !== -1 ? start + limit : records.length;
 	        resolve(_.slice(records, start, end));
@@ -1246,6 +1248,9 @@ var app =
 	    key = options.index ? entity.get(options.index) : entity.id;
 	    data = entity.toJSON();
 	  }
+
+	  // trigger request
+	  entity.trigger('request', entity, db, options);
 
 	  return db.open()
 	    .then(function () {

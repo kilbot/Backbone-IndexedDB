@@ -885,6 +885,77 @@ describe('IndexedDB Collections', function () {
 
   });
 
+  it('bug fix: read delayed records', function(done){
+
+    var IndexedCollection = Collection.extend({
+      keyPath: 'local_id',
+
+      indexes: [
+        {name: 'id', keyPath: 'id', unique: true},
+        {name: 'updated_at', keyPath: 'updated_at'},
+        {name: '_state', keyPath: '_state'}
+      ]
+    });
+    var collection = new IndexedCollection();
+
+    var data = [
+      { id: 1, title: 'Foo', _state: '' },
+      { id: 2, _state: 'READ_FAILED' },
+      { id: 3, title: 'Bar', _state: '' },
+      { id: 4, _state: 'READ_FAILED' }
+    ];
+
+    collection.save(data)
+      .then(function(response){
+        expect(response).to.have.length(4);
+        expect(collection).to.have.length(4);
+
+        // remove READ_FAILED
+        collection.remove( collection.where({ _state: 'READ_FAILED' }) );
+        expect(collection).to.have.length(2);
+
+        return collection.fetch({
+          remove: false,
+          data: {
+            filter: {
+              order: 'ASC',
+              orderby: 'title',
+              limit: 10,
+              not_in: collection.map('id')
+            }
+          },
+          index: 'id'
+        });
+      })
+      .then(function(response){
+        expect(response).to.have.length(2);
+        expect(collection).to.have.length(4);
+        expect(collection.map('id')).eqls([1, 3, 2, 4]);
+        done();
+      })
+      .catch(done);
+  });
+
+  it('should return the total count for a fetch with "not_in" filters', function(done) {
+    var collection = new Collection();
+
+    collection.save([{id: 1}, {id: 2}, {id: 3}, {id: 4}, {id: 5}])
+      .then(function(){
+        return collection.fetch({
+          data: {
+            filter: {
+              not_in: [2, 4]
+            }
+          },
+          success: function(response, collection, options){
+            expect(options.idb.total).eqls(5);
+            done();
+          }
+        });
+      })
+      .catch(done);
+  });
+
   /**
    * Unit testing is not good for benchmarking
    * eg: an open console will slow indexedDB dramatically

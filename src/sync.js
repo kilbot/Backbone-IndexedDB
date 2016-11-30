@@ -14,6 +14,9 @@ module.exports = function(method, entity, options) {
     data = entity.toJSON();
   }
 
+  // trigger request
+  entity.trigger('request', entity, db, options);
+
   return db.open()
     .then(function () {
       switch (method) {
