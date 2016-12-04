@@ -219,7 +219,6 @@ var app =
 
 	      options.success = function(resp) {
 	        if(wait && !options.attrsArray) {
-	          collection.isNew(true);
 	          collection.reset();
 	        }
 	        if(wait && options.attrsArray) {
@@ -963,6 +962,7 @@ var app =
 	      limit       = _.get(options, ['data', 'filter', 'limit'], -1),
 	      start       = _.get(options, ['data', 'filter', 'offset'], 0),
 	      order       = _.get(options, ['data', 'filter', 'order'], 'ASC'),
+	      orderby     = _.get(options, ['data', 'filter', 'orderby']),
 	      direction   = order === 'DESC' ? consts.PREV : consts.NEXT,
 	      query       = _.get(options, ['data', 'filter', 'q']),
 	      keyPath     = options.index || this.opts.keyPath,
@@ -1005,9 +1005,14 @@ var app =
 	          }
 	          return cursor.continue();
 	        }
-	        _.set(options, 'idb.total', records.length + excluded);
-	        _.set(options, 'idb.delayed', delayed);
+	        _.set(options, 'idb', {
+	          total: records.length + excluded,
+	          delayed: delayed
+	        });
+	        // _.set(options, 'idb.total', records.length + excluded);
+	        // _.set(options, 'idb.delayed', delayed);
 	        end = limit !== -1 ? start + limit : records.length;
+	        records = _.sortByOrder(records, orderby, order.toLowerCase());
 	        resolve(_.slice(records, start, end));
 	      };
 
@@ -1065,7 +1070,7 @@ var app =
 	  },
 
 	  _match: function (query, json, keyPath, options) {
-	    var fields = _.get(options, ['data', 'filter', 'fields'], keyPath);
+	    var fields = _.get(options, ['data', 'filter', 'qFields'], keyPath);
 	    return this.opts.matchMaker.call(this, json, query, {fields: fields});
 	  }
 

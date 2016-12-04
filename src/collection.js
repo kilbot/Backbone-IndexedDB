@@ -81,7 +81,6 @@ module.exports = function (parent){
 
       options.success = function(resp) {
         if(wait && !options.attrsArray) {
-          collection.isNew(true);
           collection.reset();
         }
         if(wait && options.attrsArray) {

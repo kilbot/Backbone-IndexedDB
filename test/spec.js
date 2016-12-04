@@ -631,7 +631,7 @@ describe('IndexedDB Collections', function () {
             data: {
               filter: {
                 q: [{query: 'doe', type: 'string'}],
-                fields: ['firstname', 'lastname']
+                qFields: ['firstname', 'lastname']
               }
             }
           });
@@ -643,7 +643,7 @@ describe('IndexedDB Collections', function () {
             data: {
               filter: {
                 q: [{query: 'jo', type: 'string'}],
-                fields: ['firstname', 'lastname']
+                qFields: ['firstname', 'lastname']
               }
             }
           });
@@ -736,7 +736,7 @@ describe('IndexedDB Collections', function () {
               data: {
                 filter: {
                   q: 'even:true',
-                  fields: 'foo'
+                  qFields: 'foo'
                 }
               },
               error: done,
