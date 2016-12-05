@@ -770,7 +770,9 @@ var app =
 	    var self = this;
 	    return put.call(this, data, options)
 	      .then(function (resp) {
-	        return get.call(self, resp);
+	        options.index = undefined;
+	        options.objectStore = undefined;
+	        return get.call(self, resp, options);
 	      });
 	  },
 
