@@ -956,6 +956,50 @@ describe('IndexedDB Collections', function () {
       .catch(done);
   });
 
+  it('bug fix: batch destroy with index, leaving is index is empty', function(done){
+
+    var IndexedCollection = Collection.extend({
+      keyPath: 'local_id',
+
+      indexes: [
+        {name: 'id', keyPath: 'id', unique: true},
+        {name: 'updated_at', keyPath: 'updated_at'},
+        {name: '_state', keyPath: '_state'}
+      ]
+    });
+    var collection = new IndexedCollection();
+
+    var data = [
+      { id: 1, title: 'Foo', _state: '' },
+      { id: 2, _state: 'READ_FAILED' },
+      { id: 3, title: 'Bar', _state: '' },
+      { title: 'Baz', _state: 'CREATE_FAILED' }
+    ];
+
+    collection.save(data)
+      .then(function(){
+        expect(collection.length).eqls(4);
+        return collection.destroy(null, {
+          data: {
+            filter: {
+              not_in: [ 1, 3 ]
+            }
+          },
+          index: 'id'
+        });
+      })
+      .then(function(){
+        expect(collection.map('id')).eqls([ 1, 3, undefined ]);
+        return collection.count();
+      })
+      .then(function(count){
+        expect(count).eqls(3);
+        done();
+      })
+      .catch(done);
+
+  });
+
   /**
    * Unit testing is not good for benchmarking
    * eg: an open console will slow indexedDB dramatically

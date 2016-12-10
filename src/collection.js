@@ -2,14 +2,11 @@ var bb = require('backbone');
 var _ = require('lodash');
 var Radio = require('backbone.radio');
 var IDBAdapter = require('./adapter');
-var IDBModel = require('./model');
 var sync = require('./sync');
 
 module.exports = function (parent){
 
   var IDBCollection = parent.extend({
-
-    model: IDBModel,
 
     name       : 'store',
     storePrefix: 'wc_pos_',

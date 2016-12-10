@@ -354,7 +354,12 @@ IDBAdapter.prototype = {
         // _.set(options, 'idb.total', records.length + excluded);
         // _.set(options, 'idb.delayed', delayed);
         end = limit !== -1 ? start + limit : records.length;
-        records = _.sortByOrder(records, orderby, order.toLowerCase());
+
+        // temp fix for lodash v3 compatibility
+        records = _.isFunction(_.sortByOrder) ?
+          _.sortByOrder(records, orderby, order.toLowerCase()) :
+          _.orderBy(records, orderby, order.toLowerCase());
+
         resolve(_.slice(records, start, end));
       };
 

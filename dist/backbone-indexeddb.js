@@ -63,7 +63,7 @@ var app =
 
 	var Model = bb.Model.extend({
 	  decorators :{
-	    idb: __webpack_require__(9)
+	    idb: __webpack_require__(10)
 	  }
 	});
 
@@ -140,14 +140,11 @@ var app =
 	var _ = __webpack_require__(3);
 	var Radio = __webpack_require__(5);
 	var IDBAdapter = __webpack_require__(6);
-	var IDBModel = __webpack_require__(9);
-	var sync = __webpack_require__(10);
+	var sync = __webpack_require__(9);
 
 	module.exports = function (parent){
 
 	  var IDBCollection = parent.extend({
-
-	    model: IDBModel,
 
 	    name       : 'store',
 	    storePrefix: 'wc_pos_',
@@ -1014,7 +1011,12 @@ var app =
 	        // _.set(options, 'idb.total', records.length + excluded);
 	        // _.set(options, 'idb.delayed', delayed);
 	        end = limit !== -1 ? start + limit : records.length;
-	        records = _.sortByOrder(records, orderby, order.toLowerCase());
+
+	        // temp fix for lodash v3 compatibility
+	        records = _.isFunction(_.sortByOrder) ?
+	          _.sortByOrder(records, orderby, order.toLowerCase()) :
+	          _.orderBy(records, orderby, order.toLowerCase());
+
 	        resolve(_.slice(records, start, end));
 	      };
 
@@ -1224,22 +1226,6 @@ var app =
 /* 9 */
 /***/ function(module, exports, __webpack_require__) {
 
-	var sync = __webpack_require__(10);
-
-	module.exports = function (parent){
-
-	  var IDBModel = parent.extend({
-	    sync: sync
-	  });
-
-	  return IDBModel;
-
-	};
-
-/***/ },
-/* 10 */
-/***/ function(module, exports, __webpack_require__) {
-
 	var bb = __webpack_require__(1);
 
 	/* jshint -W074 */
@@ -1286,6 +1272,22 @@ var app =
 
 	};
 	/* jshint +W074 */
+
+/***/ },
+/* 10 */
+/***/ function(module, exports, __webpack_require__) {
+
+	var sync = __webpack_require__(9);
+
+	module.exports = function (parent){
+
+	  var IDBModel = parent.extend({
+	    sync: sync
+	  });
+
+	  return IDBModel;
+
+	};
 
 /***/ }
 /******/ ]);
