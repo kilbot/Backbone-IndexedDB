@@ -112,6 +112,9 @@ IDBAdapter.prototype = {
       .then(function (resp) {
         options.index = undefined;
         options.objectStore = undefined;
+        // see bug test
+        _.set(options, ['data', 'filter', 'in'], undefined);
+        _.set(options, ['data', 'filter', 'not_in'], undefined);
         return get.call(self, resp, options);
       });
   },
@@ -323,6 +326,11 @@ IDBAdapter.prototype = {
     if (page && limit !== -1) {
       start = (page - 1) * limit;
     }
+
+    // in & not_in can be strings eg: '1,2,3' for WC REST API
+    // make sure these are turned into an array
+    include = _.isString(include) ? _.map(include.split(','), _.parseInt) : include;
+    exclude = _.isString(exclude) ? _.map(exclude.split(','), _.parseInt) : exclude;
 
     return new Promise(function (resolve, reject) {
       var records = [], delayed = 0, excluded = 0;

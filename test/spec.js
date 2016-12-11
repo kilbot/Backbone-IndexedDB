@@ -1000,6 +1000,58 @@ describe('IndexedDB Collections', function () {
 
   });
 
+  it('bug fix: returning one record when two expected', function(done){
+
+    var IndexedCollection = Collection.extend({
+      keyPath: 'local_id',
+
+      indexes: [
+        {name: 'id', keyPath: 'id', unique: true},
+        {name: 'updated_at', keyPath: 'updated_at'},
+        {name: '_state', keyPath: '_state'}
+      ]
+    });
+    var collection = new IndexedCollection();
+
+    var data = [
+      { id: 1, title: 'Foo', updated_at: '2016-12-11' },
+      { id: 3, title: 'Bar', updated_at: '2016-11-11' },
+      { id: 4, _state: 'READ_FAILED' },
+      { id: 6, _state: 'READ_FAILED' },
+      { id: 9, _state: 'READ_FAILED' }
+    ];
+
+    collection.save(data)
+      .then(function(){
+        expect(collection.length).eqls(5);
+
+        // mimic search
+        collection.remove( collection.where({ _state: 'READ_FAILED' }) );
+        collection.remove( collection.where({ id: 1 }) );
+        expect(collection.length).eqls(1);
+
+        return collection.save([{ id: 4, title: 'Baz', updated_at: '2016-10-11' }], {
+          remove: false,
+          set: false,
+          index: 'id',
+          data: {
+            filter: {
+              limit: 2,
+              not_in: '3', // <-- this causes bug, unless in/not_in removed on update
+              q: 'ba',
+              qFields: 'title'
+            }
+          }
+        });
+      })
+      .then(function(response){
+        expect(response).to.have.length(1);
+        expect(response[0].id).eqls(4);
+        done();
+      })
+      .catch(done);
+  });
+
   /**
    * Unit testing is not good for benchmarking
    * eg: an open console will slow indexedDB dramatically
