@@ -113,8 +113,11 @@ IDBAdapter.prototype = {
         options.index = undefined;
         options.objectStore = undefined;
         // see bug test
-        _.set(options, ['data', 'filter', 'in'], undefined);
-        _.set(options, ['data', 'filter', 'not_in'], undefined);
+        var filter = _.get(options, ['data', 'filter']);
+        if(filter){
+          delete filter['in'];
+          delete filter.not_in;
+        }
         return get.call(self, resp, options);
       });
   },
