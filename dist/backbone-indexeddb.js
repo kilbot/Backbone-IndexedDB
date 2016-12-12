@@ -147,11 +147,11 @@ var app =
 	  var IDBCollection = parent.extend({
 
 	    name       : 'store',
-	    storePrefix: 'wc_pos_',
 
 	    constructor: function(){
 	      parent.apply(this, arguments);
 	      this.db = new IDBAdapter({ collection: this });
+	      this.versionCheck();
 	    },
 
 	    sync: sync,
@@ -680,21 +680,21 @@ var app =
 	  options = options || {};
 	  this.parent = options.collection;
 	  this.opts = _.defaults(_.pick(this.parent, _.keys(this.default)), this.default);
-	  this.opts.storeName = this.parent.name || this.default.storeName;
-	  this.opts.dbName = this.opts.storePrefix + this.opts.storeName;
+	  this.opts.name = this.parent.name || this.default.name;
+	  this.opts.dbName = this.opts.localDBPrefix + this.opts.name;
 	}
 
 	IDBAdapter.prototype = {
 
 	  default: {
-	    storeName    : 'store',
-	    storePrefix  : 'Prefix_',
-	    dbVersion    : 1,
-	    keyPath      : 'id',
-	    autoIncrement: true,
-	    indexes      : [],
-	    matchMaker   : matchMaker,
-	    onerror      : function (options) {
+	    name          : 'store',
+	    localDBPrefix : 'Prefix_',
+	    dbVersion     : 1,
+	    keyPath       : 'id',
+	    autoIncrement : true,
+	    indexes       : [],
+	    matchMaker    : matchMaker,
+	    onerror       : function (options) {
 	      options = options || {};
 	      var err = new Error(options._error.message);
 	      err.code = event.target.errorCode;
@@ -736,7 +736,7 @@ var app =
 	        };
 
 	        request.onupgradeneeded = function (event) {
-	          var store = event.currentTarget.result.createObjectStore(self.opts.storeName, self.opts);
+	          var store = event.currentTarget.result.createObjectStore(self.opts.name, self.opts);
 
 	          self.opts.indexes.forEach(function (index) {
 	            store.createIndex(index.name, index.keyPath, {
@@ -785,11 +785,11 @@ var app =
 	  },
 
 	  getTransaction: function (access) {
-	    return this.db.transaction([this.opts.storeName], access);
+	    return this.db.transaction([this.opts.name], access);
 	  },
 
 	  getObjectStore: function (access) {
-	    return this.getTransaction(access).objectStore(this.opts.storeName);
+	    return this.getTransaction(access).objectStore(this.opts.name);
 	  },
 
 	  count: function (options) {

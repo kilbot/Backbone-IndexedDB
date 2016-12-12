@@ -9,11 +9,11 @@ module.exports = function (parent){
   var IDBCollection = parent.extend({
 
     name       : 'store',
-    storePrefix: 'wc_pos_',
 
     constructor: function(){
       parent.apply(this, arguments);
       this.db = new IDBAdapter({ collection: this });
+      this.versionCheck();
     },
 
     sync: sync,

@@ -19,7 +19,7 @@ describe('IndexedDB Collections', function () {
     var storePrefix = 'Test-';
     var name = Date.now().toString();
     Collection = IDBCollection.extend({
-      storePrefix: storePrefix,
+      localDBPrefix: storePrefix,
       name: name
     });
     dbNameArray.push( storePrefix + name );
