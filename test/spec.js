@@ -1059,66 +1059,63 @@ describe('IndexedDB Collections', function () {
    *
    * 10000 records
    */
-  // it('should be performant with putBatch', function(done) {
-  //  var collection = new Collection();
-  //
-  //  var count = is_safari ? 2000 : 10000;
-  //
-  //  for(var data = [], i = 0; i < count; i++) {
-  //    data.push({ foo: i });
-  //  }
-  //  this.timeout(10000);
-  //
-  //  var start = Date.now();
-  //
-  //  collection.putBatch(data)
-  //    .then(function() {
-  //      var time = Date.now() - start;
-  //      expect(time).to.be.below(2000);
-  //      console.log(time);
-  //      done();
-  //    })
-  //    .catch(done);
-  // });
+  it('should be performant with batch save', function(done) {
+   var collection = new Collection();
+
+   var count = is_safari ? 2000 : 10000;
+
+   for(var data = [], i = 0; i < count; i++) {
+     data.push({ foo: i });
+   }
+   this.timeout(10000);
+
+   var start = Date.now();
+
+   collection.save(data)
+     .then(function() {
+       var time = Date.now() - start;
+       expect(time).to.be.below(5000);
+       console.log(time);
+       done();
+     })
+     .catch(done);
+  });
 
   /**
    * 1000 records
    */
-  //it('should be performant with putBatch merge', function(done) {
-  //  var Model = Backbone.IDBModel.extend({
-  //    idAttribute: 'local_id'
-  //  });
-  //
-  //  var DualCollection = Collection.extend({
-  //    model  : Model,
-  //    keyPath: 'local_id',
-  //    indexes: [
-  //      {name: 'id', keyPath: 'id', unique: true}
-  //    ],
-  //  });
-  //
-  //  var count = is_safari ? 200 : 1000;
-  //
-  //  for(var data = [], i = 0; i < count; i++) {
-  //    data.push({ id: i });
-  //  }
-  //  this.timeout(10000);
-  //
-  //  var start = Date.now();
-  //
-  //  var collection = new DualCollection();
-  //  collection.putBatch(data)
-  //    .then(function () {
-  //      return collection.putBatch(data, {index: 'id'});
-  //    })
-  //    .then(function () {
-  //      var time = Date.now() - start;
-  //      expect(time).to.be.below(2000);
-  //      console.log(time);
-  //      done();
-  //    })
-  //    .catch(done);
-  //});
+  it('should be performant with batch merge', function(done) {
+   // var Model = Backbone.IDBModel.extend({
+   //   idAttribute: 'local_id'
+   // });
+
+   var DualCollection = Collection.extend({
+     // model  : Model,
+     keyPath: 'local_id',
+     indexes: [
+       {name: 'id', keyPath: 'id', unique: true}
+     ],
+   });
+
+   var count = is_safari ? 2000 : 10000;
+
+   for(var data = [], i = 0; i < count; i++) {
+     data.push({ id: i });
+   }
+   this.timeout(10000);
+
+   var start = Date.now();
+
+   var collection = new DualCollection();
+   collection.save(data, {index: 'id'})
+     .then(function () {
+       var time = Date.now() - start;
+       expect(time).to.be.below(8000);
+       console.log(time);
+       done();
+     })
+     .catch(done);
+  });
 
   after(function( done ) {
     var indexedDB = window.indexedDB;
