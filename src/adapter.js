@@ -38,10 +38,12 @@ IDBAdapter.prototype = {
     indexes       : [],
     matchMaker    : matchMaker,
     onerror       : function (options) {
-      options = options || {};
-      var err = new Error(options._error.message);
-      err.code = event.target.errorCode;
-      options._error.callback(err);
+      var error = _.get(options, '_error', {});
+      var e = new Error(error.message);
+      e.code = _.get(options, ['target', 'errorCode']);
+      if(error.callback){
+        error.callback(e);
+      }
     }
   },
 
@@ -54,6 +56,12 @@ IDBAdapter.prototype = {
 
       this._open = new Promise(function (resolve, reject) {
         var request = indexedDB.open(self.opts.dbName);
+
+        // request = null in Safari Private Browsing
+        if(!request){
+          options._error = {message: 'open indexedDB error', callback: reject};
+          self.opts.onerror(options);
+        }
 
         request.onsuccess = function (event) {
           self.db = event.target.result;
